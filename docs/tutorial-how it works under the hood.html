@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Second Brain Workflow 튜토리얼</title>
+<style>
+  :root { --accent:#3b6ea5; --bg:#fbfbfa; --sidebar:#f3f4f6; --border:#e5e7eb; --text:#1f2328; }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR",Segoe UI,Roboto,sans-serif;
+         line-height:1.75; font-size:17px; }
+  .layout { display:flex; align-items:flex-start; }
+  nav.toc { position:sticky; top:0; height:100vh; overflow-y:auto; flex:0 0 280px;
+            background:var(--sidebar); border-right:1px solid var(--border); padding:24px 18px; }
+  nav.toc h2 { font-size:13px; letter-spacing:.04em; text-transform:uppercase; color:#6b7280; margin:0 0 14px; }
+  nav.toc a { display:block; padding:7px 10px; margin:2px 0; border-radius:7px; text-decoration:none;
+              color:#374151; font-size:14.5px; transition:background .12s,color .12s; }
+  nav.toc a:hover { background:#e5e7eb; color:var(--accent); }
+  nav.toc a.active { background:var(--accent); color:#fff; }
+  main { flex:1 1 auto; min-width:0; display:flex; justify-content:center; padding:48px 32px 120px; }
+  article { width:100%; max-width:820px; }
+  article h1 { font-size:1.9em; margin:1.6em 0 .6em; padding-bottom:.25em; border-bottom:2px solid var(--border); }
+  article h2 { font-size:1.45em; margin:1.5em 0 .5em; }
+  article h3 { font-size:1.2em; margin:1.3em 0 .4em; }
+  article img { max-width:100%; }
+  article code { background:#eef0f3; padding:.15em .4em; border-radius:5px; font-size:.88em;
+                 font-family:"SF Mono",SFMono-Regular,Menlo,Consolas,monospace; }
+  article pre { background:#1f2328; color:#e6edf3; padding:16px 18px; border-radius:10px; overflow-x:auto; }
+  article pre code { background:none; padding:0; color:inherit; font-size:.86em; }
+  article pre.mermaid { background:#fff; border:1px solid var(--border); text-align:center; }
+  article blockquote { margin:1em 0; padding:.4em 1.1em; border-left:4px solid var(--accent);
+                       background:#eef3f8; color:#374151; border-radius:0 8px 8px 0; }
+  article table { border-collapse:collapse; width:100%; margin:1em 0; font-size:.95em; }
+  article th, article td { border:1px solid var(--border); padding:8px 12px; text-align:left; }
+  article th { background:#f3f4f6; }
+  hr.chap-sep { border:none; border-top:1px dashed #cbd5e1; margin:64px 0; }
+  a { color:var(--accent); }
+  @media (max-width:760px){ nav.toc{display:none;} main{padding:24px 16px 80px;} }
+</style>
+</head>
+<body>
+<div class="layout">
+  <nav class="toc">
+    <h2>Second Brain Workflow 튜토리얼</h2>
+    <a href="#intro">개요 (Overview)</a>
+    <a href="#chapter-1">1. 수집: URL을 원재료(raw)로 저장하기</a>
+    <a href="#chapter-2">2. 증류 및 연결: 원재료를 원자적 노트로 가공하기</a>
+    <a href="#chapter-3">3. 벡터 색인 및 검색: 노트를 의미 기반으로 찾기</a>
+    <a href="#chapter-4">4. 종합: 연결된 노트들을 엮어 새로운 글 생성하기</a>
+    <a href="#chapter-5">5. 협업 글쓰기: AI와 함께 초안 다듬기</a>
+  </nav>
+  <main><article id="content">불러오는 중…</article></main>
+</div>
+<textarea id="source" hidden>&lt;a id=&quot;intro&quot;&gt;&lt;/a&gt;
+
+# Tutorial: Second Brain Workflow
+
+이 프로젝트는 흩어진 정보와 생각을 관리하는 **개인 지식 창고(Second Brain)**입니다. 웹 기사나 메모를 *명령어 하나로* 간단히 수집하고, AI가 이 자료들을 의미 있는 **원자적 노트**로 자동 정리 및 연결해줍니다. 사용자는 자연어 질문으로 필요한 노트를 즉시 찾을 수 있으며, 여러 노트를 엮어 *새로운 글의 초안*을 생성하거나 AI와 함께 글을 다듬을 수도 있습니다.
+
+
+**Source Repository:** https://github.com/slowww-ai/second-brain
+
+```mermaid
+flowchart TD
+    A0[&quot;수집: URL을 원재료(raw)로 저장하기
+&quot;]
+    A1[&quot;증류 및 연결: 원재료를 원자적 노트로 가공하기
+&quot;]
+    A2[&quot;벡터 색인 및 검색: 노트를 의미 기반으로 찾기
+&quot;]
+    A3[&quot;종합: 연결된 노트들을 엮어 새로운 글 생성하기
+&quot;]
+    A4[&quot;협업 글쓰기: AI와 함께 초안 다듬기
+&quot;]
+    A0 -- &quot;처리할 원재료 제공&quot; --&gt; A1
+    A1 -- &quot;색인 대상 노트 생성&quot; --&gt; A2
+    A2 -- &quot;관련 노트 검색 기능 제공&quot; --&gt; A3
+    A3 -- &quot;다듬을 초안 생성&quot; --&gt; A4
+```
+
+## Chapters
+
+1. [수집: URL을 원재료(raw)로 저장하기](#chapter-1)
+2. [증류 및 연결: 원재료를 원자적 노트로 가공하기](#chapter-2)
+3. [벡터 색인 및 검색: 노트를 의미 기반으로 찾기](#chapter-3)
+4. [종합: 연결된 노트들을 엮어 새로운 글 생성하기](#chapter-4)
+5. [협업 글쓰기: AI와 함께 초안 다듬기](#chapter-5)
+
+
+
+&lt;hr class=&quot;chap-sep&quot;/&gt;
+
+&lt;a id=&quot;chapter-1&quot;&gt;&lt;/a&gt;
+
+# Chapter 1: 수집: URL을 원재료(raw)로 저장하기
+
+
+Second Brain(제2의 뇌)을 만드는 여정에 오신 것을 환영합니다! 이 시스템의 첫 번째 단추이자 가장 중요한 습관은 바로 &#x27;수집&#x27;입니다.
+
+혹시 나중에 읽으려고 열어 둔 브라우저 탭이 수십 개에 달하거나, &quot;이건 꼭 봐야지&quot; 하고 스크랩해 둔 링크가 어디에 저장했는지 기억나지 않는 경험이 있으신가요? 이런 &#x27;나중에 읽어야 한다&#x27;는 생각들은 우리 머릿속에 &#x27;열린 고리(open loop)&#x27;를 만들어 집중력을 흩트러뜨리는 주범입니다.
+
+&#x27;수집&#x27; 단계는 이 문제를 해결하기 위한 아주 간단한 해결책입니다. 마치 웹 서핑을 하다가 흥미로운 정보를 발견했을 때 휘두르는 &#x27;디지털 잠자리채&#x27;와 같습니다. 나중에 정리하거나 이해하려는 고민 없이, 일단 잡아두는 것이죠.
+
+이번 장에서는 이 시스템의 현관문 역할을 하는 수집 과정을 배우고, 단 하나의 명령어로 웹페이지를 내 지식 창고의 &#x27;원재료&#x27;로 저장하는 방법을 익혀보겠습니다.
+
+### 핵심 목표: 1초 만에 정보 포획하기
+
+수집 단계의 철학은 &#x27;마찰 최소화&#x27;입니다. 정보를 저장하기 위해 여러 단계를 거치거나, &quot;어떤 폴더에 넣어야 하지?&quot;라고 고민하는 순간, 우리는 저장을 미루게 됩니다. 이 시스템은 그런 고민을 없애줍니다.
+
+- **문제:** 웹에서 흥미로운 기사를 발견했지만 지금 당장 읽을 시간은 없다.
+- **기존 방식:** 브라우저 탭을 그대로 열어두거나, 북마크에 추가하고 잊어버린다.
+- **Second Brain 방식:** URL을 복사해 명령어 하나만 입력한다. 정보는 즉시 안전하게 저장되고, 나는 하던 일에 다시 집중할 수 있다.
+
+이 간단한 습관만으로도 &#x27;읽어야 한다는 압박감&#x27;에서 벗어나 훨씬 평온한 마음으로 지식을 쌓아갈 수 있습니다.
+
+### `/jina-capture`: 당신의 디지털 잠자리채
+
+웹페이지를 수집하는 가장 간단한 방법은 Claude Code 채팅창에 `/jina-capture` 명령어를 사용하는 것입니다.
+
+예를 들어, 제텔카스텐(Zettelkasten)에 대한 좋은 글을 발견했다고 가정해 봅시다.
+
+```
+/jina-capture https://en.wikipedia.org/wiki/Zettelkasten
+```
+
+이 명령어를 입력하면 어떤 일이 일어날까요?
+
+1. Claude Code가 `jina.ai`라는 외부 서비스를 이용해 해당 URL의 웹페이지 내용을 가져옵니다.
+2. 광고, 메뉴 등 불필요한 요소를 제거하고 본문만 남겨 깔끔한 마크다운(Markdown) 형식으로 변환합니다.
+3. 변환된 내용을 `wiki/raw/` 폴더 안에 오늘 날짜와 글 제목을 딴 파일 이름으로 저장합니다. 예를 들면 `wiki/raw/2024-10-26-zettelkasten.md` 와 같은 식이죠.
+
+이제 브라우저 탭을 닫아도 괜찮습니다. 기사의 내용은 고스란히 내 컴퓨터의 `wiki/raw/` 폴더에 원본 그대로 보존되었으니까요.
+
+### `wiki/raw/` 폴더: 모든 것의 시작점
+
+`wiki/raw/` 폴더는 우리 &#x27;제2의 뇌&#x27;의 식료품 저장고와 같습니다. 시장에서 사 온 채소나 고기를 다듬지 않고 일단 냉장고에 넣어두는 것처럼, 웹에서 수집한 정보나 순간 떠오른 메모를 가공하지 않은 날것(raw) 그대로 던져 넣는 곳입니다.
+
+이 폴더에 대해서는 딱 한 가지만 기억하면 됩니다.
+
+&gt; **&#x27;추가만 하고, 절대 수정하거나 삭제하지 마세요.&#x27;**
+
+이곳은 원본을 보존하는 아카이브입니다. 나중에 이 원재료를 어떻게 요리할지는 다음 장인 [증류 및 연결: 원재료를 원자적 노트로 가공하기](#chapter-2)에서 배우게 됩니다. 지금은 그저 부지런히 재료를 모으는 데만 집중하면 됩니다.
+
+직접 메모를 작성해서 넣을 수도 있습니다.
+
+### 내부 동작 원리 엿보기
+
+`/jina-capture` 명령어를 입력했을 때, 시스템 내부에서는 어떤 일이 일어나는지 간단한 순서도로 살펴봅시다.
+
+```mermaid
+sequenceDiagram
+    participant User as 사용자
+    participant Claude as Claude Code
+    participant Jina as Jina Reader 서비스
+    participant Filesystem as 로컬 파일 시스템
+
+    User-&gt;&gt;Claude: /jina-capture &lt;URL&gt;
+    Claude-&gt;&gt;Jina: &lt;URL&gt;의 내용을 마크다운으로 요청
+    Jina--&gt;&gt;Claude: 정리된 마크다운 텍스트 반환
+    Claude-&gt;&gt;Filesystem: `wiki/raw/` 폴더에 파일 생성 및 저장
+    Filesystem--&gt;&gt;Claude: 저장 완료
+    Claude--&gt;&gt;User: &quot;파일이 wiki/raw/에 저장되었습니다.&quot;
+```
+
+이 모든 과정은 명령어 한 줄로 자동 처리됩니다. 사용자는 복잡한 과정을 알 필요 없이 그저 &#x27;디지털 잠자리채&#x27;를 휘두르기만 하면 되는 것이죠.
+
+이 명령어의 구체적인 행동 방식은 우리 프로젝트의 `.claude/skills/jina-capture/SKILL.md` 파일에 정의되어 있습니다. 이 파일은 Claude Code에게 `/jina-capture` 라는 명령을 들었을 때 어떻게 행동해야 하는지 알려주는 일종의 &#x27;설명서&#x27;입니다.
+
+```yaml
+# .claude/skills/jina-capture/SKILL.md 파일의 일부
+---
+name: jina-capture
+description: 웹 페이지를 깔끔한 마크다운으로 가져와 wiki/raw/에 새 캡처로 직접 저장합니다.
+---
+# Jina Capture
+
+어떤 URL이든 Jina Reader 서비스(`https://r.jina.ai/&lt;url&gt;`)를 사용해
+`wiki/raw/`에 타임스탬프가 찍힌 마크다운 파일로 변환합니다.
+
+## 단계
+
+1. **대상 폴더 확인.** 기본값은 `wiki/raw/` 입니다.
+2. **마크다운 가져오기.** `https://r.jina.ai/&lt;url&gt;` 주소를 호출합니다.
+3. **제목과 슬러그(slug) 추출.** Jina의 결과물에서 제목을 파싱합니다.
+4. **파일 작성.** `wiki/raw/&lt;YYYY-MM-DD&gt;-&lt;slug&gt;.md` 경로에 머리말(frontmatter)과 함께 저장합니다.
+...
+```
+
+이처럼 Second Brain 워크플로우의 많은 자동화 기능들은 특정 작업을 수행하도록 미리 정의된 &#x27;스킬(skill)&#x27;들에 의해 이루어집니다.
+
+### 정리하며
+
+이번 장에서는 Second Brain 시스템의 가장 첫 단계인 &#x27;수집&#x27;에 대해 배웠습니다.
+
+- **왜 수집이 중요한가?**: &#x27;나중에 읽어야지&#x27; 하는 생각(열린 고리)을 머리에서 비워내어 현재 하는 일에 집중할 수 있게 해줍니다.
+- **어떻게 수집하는가?**: `/jina-capture &lt;URL&gt;` 명령어 하나로 어떤 웹페이지든 `wiki/raw/` 폴더에 원본 그대로 저장할 수 있습니다.
+- **`wiki/raw/` 폴더의 역할**: 가공되지 않은 원재료를 보관하는 저장고입니다. &#x27;추가만 하고 수정/삭제는 하지 않는다&#x27;는 규칙을 지키는 것이 중요합니다.
+
+이제 여러분은 웹을 탐험하다 마주치는 어떤 정보든 놓치지 않고 여러분만의 지식 창고에 안전하게 보관할 수 있는 강력한 도구를 갖게 되었습니다.
+
+하지만 재료를 모으기만 해서는 요리가 완성되지 않겠죠. 다음 장에서는 이렇게 모인 원재료들을 어떻게 의미 있는 지식 조각으로 다듬고 서로 연결하는지 알아보겠습니다.
+
+---
+
+다음으로 이동: **[제2장: 증류 및 연결: 원재료를 원자적 노트로 가공하기](#chapter-2)**
+
+
+&lt;hr class=&quot;chap-sep&quot;/&gt;
+
+&lt;a id=&quot;chapter-2&quot;&gt;&lt;/a&gt;
+
+# Chapter 2: 증류 및 연결: 원재료를 원자적 노트로 가공하기
+
+
+[이전 장](#chapter-1)에서 우리는 디지털 잠자리채(`/jina-capture`)를 이용해 웹상의 흥미로운 정보들을 `wiki/raw/` 폴더에 원재료 그대로 수집하는 법을 배웠습니다. 이제 여러분의 `raw/` 폴더는 각종 기사와 메모가 쌓여 있는 식료품 저장고와 같을 겁니다.
+
+하지만 재료가 많다고 저절로 요리가 되진 않죠. 긴 기사나 두서없는 메모 뭉치는 그 자체로는 다시 보기도, 다른 아이디어와 연결하기도 어렵습니다. 지금부터 이 시스템의 심장부라 할 수 있는 &#x27;증류&#x27;와 &#x27;연결&#x27; 과정을 통해, 이 원재료들을 의미 있는 지식 조각으로 가공하는 법을 배워보겠습니다.
+
+### 문제: 정보는 모았지만, 쓸 수가 없다
+
+`raw/` 폴더에 저장된 &#x27;제텔카스텐 위키피디아 페이지&#x27;를 생각해 봅시다. 내용은 좋지만, 분량이 꽤 깁니다. 나중에 &#x27;원자적 노트&#x27;라는 개념만 따로 찾아보고 싶을 때, 이 긴 글 전체를 다시 읽어야 할까요? 다른 글에서 &#x27;상호참조&#x27;의 중요성에 대해 쓰다가 제텔카스텐의 관련 내용을 인용하고 싶을 땐 어떻게 해야 할까요?
+
+이것이 바로 &#x27;증류&#x27; 단계가 해결하려는 문제입니다. 긴 글이라는 원석에서 핵심 개념이라는 보석들만 추출해내는 과정이죠.
+
+- **문제:** 긴 글 안에 여러 개념이 섞여 있어 재활용하기 어렵다.
+- **기존 방식:** 필요할 때마다 긴 글 전체를 다시 읽고 필요한 부분을 찾는다.
+- **Second Brain 방식:** 글을 한 번 읽어 여러 개의 작은 &#x27;원자적 노트&#x27;로 분해하고, 각 노트를 서로 연결해 둔다.
+
+마치 커다란 레고 성을 조립 설명서 없이 받았을 때, 일단 가장 작은 블록 단위로 모두 분해해서 종류별로 정리해두는 것과 같습니다. 이렇게 해두면 나중에 자동차든 우주선이든 원하는 것을 훨씬 쉽게 만들 수 있죠.
+
+### `/ingest`: 당신의 지식 연금술사
+
+이 복잡해 보이는 증류와 연결 과정을 단 한 번의 명령으로 처리해 주는 것이 바로 `/ingest` 명령어입니다. &#x27;ingest&#x27;는 &#x27;섭취하다&#x27;, &#x27;소화하다&#x27;라는 뜻으로, 말 그대로 Claude Code가 `raw/` 폴더의 새로운 재료들을 소화해서 `notes/` 폴더에 영양가 있는 지식으로 만들어주는 역할을 합니다.
+
+Claude Code 채팅창에 간단히 입력해 보세요.
+
+```
+/ingest
+```
+
+이 명령을 내리면 Claude는 다음과 같은 연금술을 시작합니다.
+
+1.  `wiki/raw/` 폴더를 살펴보고, 아직 처리되지 않은 새로운 파일이 있는지 확인합니다.
+2.  새로운 파일을 발견하면, 그 내용을 읽고 핵심 개념들을 파악합니다.
+3.  각 핵심 개념을 &#x27;원자적 노트(Atomic Note)&#x27;라는 작은 단위로 쪼갭니다. &#x27;원자적 노트&#x27;란, 더 이상 나눌 수 없는 단 하나의 아이디어나 개념만 담고 있는 노트를 의미합니다.
+4.  쪼개진 노트들을 `wiki/notes/` 폴더에 각각의 파일로 저장합니다.
+5.  관련 있는 노트들끼리 `[[위키링크]]`를 사용해 서로 연결해 줍니다.
+6.  처리가 끝난 `raw/` 파일은 다시 처리되지 않도록 기록을 남깁니다.
+
+예를 들어, `raw/2024-10-26-zettelkasten.md` 파일을 `/ingest`로 처리하면 `notes/` 폴더에 다음과 같은 파일들이 생길 수 있습니다.
+
+- `notes/zettelkasten.md`
+- `notes/atomic-notes.md`
+- `notes/evergreen-notes.md`
+
+그리고 `zettelkasten.md` 파일 안에는 `[[atomic-notes]]`와 같은 링크가 포함되어, 노트 간의 지식 네트워크가 만들어지기 시작합니다.
+
+### 내부 동작 원리 엿보기
+
+`/ingest` 명령어를 입력했을 때, 시스템 내부에서는 어떤 일이 일어나는지 간단한 순서도로 살펴봅시다.
+
+```mermaid
+sequenceDiagram
+    participant User as 사용자
+    participant Claude as Claude Code
+    participant ingest.py as 정리 스크립트
+    participant RawFolder as `wiki/raw/`
+    participant NotesFolder as `wiki/notes/`
+
+    User-&gt;&gt;Claude: /ingest
+    Claude-&gt;&gt;ingest.py: 아직 처리 안 된 파일 목록 줘 (list-new)
+    ingest.py-&gt;&gt;RawFolder: 파일 목록 확인
+    RawFolder--&gt;&gt;ingest.py: 새 파일 목록 반환
+    ingest.py--&gt;&gt;Claude: `2024-10-26-zettelkasten.md` (신규)
+    Claude-&gt;&gt;RawFolder: 해당 파일 내용 읽기
+    Claude-&gt;&gt;Claude: 내용을 분석해 원자적 노트로 분해
+    Claude-&gt;&gt;NotesFolder: `zettelkasten.md`, `atomic-notes.md` 생성 및 [[링크]] 추가
+    Claude-&gt;&gt;ingest.py: `zettelkasten.md` 처리 완료 기록해 줘 (record)
+    ingest.py--&gt;&gt;Claude: 처리 기록 완료
+    Claude--&gt;&gt;User: &quot;1개 파일을 처리해 2개의 노트를 만들고 1개를 업데이트했습니다.&quot;
+```
+
+이 모든 과정은 Claude Code와 몇 가지 보조 스크립트의 협업으로 이루어집니다. 사용자는 그저 `/ingest`라는 마법 주문만 외우면 되는 것이죠.
+
+### 코드 깊이 보기: 무엇이 `/ingest`를 움직이는가?
+
+이 마법의 뒤에는 잘 짜인 &#x27;설명서&#x27;와 &#x27;도구&#x27;가 있습니다.
+
+먼저, Claude Code가 `/ingest` 명령을 받았을 때 어떻게 행동해야 하는지 알려주는 설명서는 `.claude/commands/ingest.md` 파일에 정의되어 있습니다.
+
+```yaml
+# .claude/commands/ingest.md 파일의 일부
+---
+description: Process new files in wiki/raw/ into distilled notes in wiki/notes/
+---
+
+Your job is to turn new raw captures into clean, linked wiki notes.
+
+Steps:
+
+1. Run `python scripts/ingest.py list-new` to find raw files not yet referenced...
+...
+3. For each new raw markdown file:
+   a. Read it...
+   b. Identify the 1–3 core concepts in the file.
+   c. ...create a new note in `wiki/notes/&lt;slug&gt;.md` with proper frontmatter, and `[[wikilinks]]`...
+...
+6. **Record each processed raw file in the ledger.** After you finish... run:
+   `python scripts/ingest.py record &lt;raw-filename&gt; &lt;note1,note2,...&gt;`
+...
+```
+
+이 설명서에 따라 Claude는 `scripts/ingest.py`라는 파이썬 스크립트를 도구로 사용합니다. 이 스크립트는 두 가지 중요한 역할을 합니다.
+
+**1. 새로운 재료 찾아내기 (`list-new`)**
+
+`raw/` 폴더에 파일이 수백 개 쌓여도, Claude는 이전에 처리했던 파일은 건너뛰고 새로 추가되거나 변경된 파일만 정확히 찾아냅니다.
+
+```bash
+# 터미널에서 직접 실행해 볼 수도 있습니다.
+python scripts/ingest.py list-new
+```
+
+위 명령어를 실행하면, 다음과 같이 아직 처리되지 않은 파일 목록을 보여줍니다.
+
+```
+2024-10-26-zettelkasten.md  (new)
+2024-10-27-some-other-article.md (new)
+```
+
+**2. 처리 완료 도장 찍기 (`record`)**
+
+한번 요리한 재료를 또 요리하면 안 되겠죠? Claude가 파일 처리를 끝내면, `record` 명령을 통해 &#x27;이 파일은 처리 끝!&#x27;이라는 도장을 찍어둡니다. 이 기록은 `wiki/index.db`라는 작은 데이터베이스 파일에 저장됩니다.
+
+```python
+# scripts/ingest.py 의 일부
+def record(raw_name: str, produced: str) -&gt; None:
+    # ... (생략) ...
+    con = connect() # 데이터베이스에 연결
+    con.execute(
+        # &#x27;ingested&#x27; 테이블에 처리 기록을 추가하거나 갱신
+        &quot;INSERT OR REPLACE INTO ingested(...) VALUES (?, ?, ?, ?)&quot;,
+        (raw_name, content_hash(path), ... , produced),
+    )
+    con.commit() # 변경사항 저장
+    # ... (생략) ...
+```
+
+이처럼 `/ingest`는 단순한 명령이 아니라, 잘 정의된 규칙과 효율적인 도구가 결합된 자동화 워크플로우입니다.
+
+### `wiki/notes/`: 당신의 살아있는 지식 네트워크
+
+`/ingest`를 통해 만들어진 노트들은 `wiki/notes/` 폴더에 저장됩니다. 이 폴더는 `raw/` 폴더와는 성격이 다릅니다.
+
+| 폴더 | 규칙 | 역할 |
+|---|---|---|
+| `wiki/raw/` | **추가만 가능 (수정/삭제 금지)** | 원본을 보존하는 아카이브, 식료품 창고 |
+| `wiki/notes/` | **자유롭게 수정/삭제 가능** | 살아있는 지식 위키, 잘 정리된 부엌 |
+
+`notes/` 폴더 안의 노트들은 여러분의 생각과 함께 계속해서 자라나는 &#x27;상록수 노트(Evergreen notes)&#x27;가 될 수 있습니다. Claude가 초안을 잡아주면, 여러분이 직접 노트를 열어 내용을 다듬고, 새로운 생각을 추가하고, 다른 노트와 연결하며 자신만의 지식 정원을 가꾸어 나갈 수 있습니다. 특히 [Obsidian](https://obsidian.md)과 같은 마크다운 편집기를 사용하면 노트 간의 연결을 시각적으로 보거나 쉽게 이동할 수 있어 더욱 편리합니다.
+
+### 정리하며
+
+이번 장에서는 Second Brain 시스템의 핵심인 &#x27;증류와 연결&#x27; 과정을 배웠습니다.
+
+- **왜 증류가 중요한가?**: 긴 글과 메모를 재사용하기 쉬운 작은 지식 단위인 &#x27;원자적 노트&#x27;로 만들어, 아이디어를 쉽게 연결하고 확장할 수 있게 해줍니다.
+- **어떻게 증류하는가?**: `/ingest` 명령어 하나로 `raw/` 폴더의 새로운 재료를 자동으로 분석하고, `notes/` 폴더에 서로 연결된 원자적 노트 네트워크를 구축할 수 있습니다.
+- **`raw/`와 `notes/`의 차이**: `raw/`는 원본 보존을 위해 수정하지 않는 &#x27;과거 기록&#x27;이고, `notes/`는 언제든 다듬고 키워나갈 수 있는 &#x27;현재의 지식&#x27;입니다.
+
+이제 여러분은 흩어져 있던 정보 조각들을 의미 있는 지식 네트워크로 바꾸는 강력한 연금술을 손에 넣었습니다. 잘 정리된 노트들은 그 자체로도 훌륭하지만, 이 노트들을 필요할 때 즉시 찾아내 활용할 수 있을 때 비로소 진정한 &#x27;제2의 뇌&#x27;가 됩니다.
+
+다음 장에서는 이렇게 구축한 지식 네트워크를 어떻게 &#x27;의미 기반으로&#x27; 똑똑하게 검색하는지 알아보겠습니다.
+
+---
+
+다음으로 이동: **[제3장: 벡터 색인 및 검색: 노트를 의미 기반으로 찾기](#chapter-3)**
+
+
+&lt;hr class=&quot;chap-sep&quot;/&gt;
+
+&lt;a id=&quot;chapter-3&quot;&gt;&lt;/a&gt;
+
+# Chapter 3: 벡터 색인 및 검색: 노트를 의미 기반으로 찾기
+
+
+[이전 장](#chapter-2)에서 우리는 `/ingest` 명령어를 통해 수집한 원재료들을 의미 있는 &#x27;원자적 노트&#x27;로 증류하고, `[[위키링크]]`를 통해 서로 연결하는 법을 배웠습니다. 이제 여러분의 `wiki/notes/` 폴더는 서로 연결된 지식의 그물망, 즉 진정한 위키로 거듭나기 시작했습니다.
+
+하지만 노트가 수십, 수백 개로 늘어나면 어떻게 될까요? 특정 정보가 필요할 때, 정확히 어떤 파일에 그 내용이 있었는지 기억하기란 쉽지 않습니다. 파일 탐색기에서 키워드로 검색(Ctrl+F)하는 것만으로는 부족할 때가 많습니다. 예를 들어, &#x27;뽀모도로 기법&#x27;에 대한 노트를 작성해두고 나중에 &#x27;집중력을 높이는 방법&#x27;을 찾는다고 상상해 보세요. 두 문구는 키워드가 다르지만 의미는 매우 가깝습니다. 기존 검색 방식으로는 이 둘을 연결하기 어렵죠.
+
+이번 장에서는 우리 &#x27;제2의 뇌&#x27;에 똑똑한 기억력을 부여하는 &#x27;벡터 색인 및 검색&#x27; 기술을 배웁니다. 이를 통해 키워드가 아닌 &#x27;의미&#x27;를 기반으로 원하는 노트를 순식간에 찾아내는 마법 같은 경험을 하게 될 것입니다.
+
+### 문제: 내 위키에 똑똑한 사서가 필요하다
+
+여러분의 위키는 이제 방대한 장서를 갖춘 도서관과 같습니다. 하지만 책이 어디에 있는지 알려주는 사서가 없다면 무용지물이겠죠.
+
+- **문제:** &quot;생산성을 높이는 습관에 대한 아이디어가 있었는데... 어떤 노트였지?&quot;처럼, 정확한 키워드는 기억나지 않고 개념만 어렴풋이 떠오를 때 정보를 찾기 어렵다.
+- **기존 방식:** 파일 이름이나 본문 내용을 기억에 의존해 여러 키워드로 검색해본다. 실패하면 포기한다.
+- **Second Brain 방식:** &quot;/ask 생산성 습관&quot;처럼 자연스러운 질문을 던진다. 시스템이 의미를 이해하고 관련성이 가장 높은 노트들을 찾아 답변해준다.
+
+이것은 마치 책 제목만 아는 사서와, 모든 책의 내용을 이해하고 &quot;이런 주제를 찾으신다면 이 책들과 저 책의 3장을 보시면 됩니다&quot;라고 추천해주는 지혜로운 사서의 차이와 같습니다. 우리의 목표는 후자와 같은 지능형 검색 시스템을 구축하는 것입니다.
+
+### 노트에 &#x27;의미 주소&#x27;를 부여하기
+
+어떻게 컴퓨터가 글의 &#x27;의미&#x27;를 이해할 수 있을까요? 그 비밀은 **벡터 임베딩(Vector Embedding)**이라는 기술에 있습니다. 너무 어렵게 생각할 필요 없습니다. 간단한 비유로 이해해 봅시다.
+
+모든 노트의 의미를 하나의 점으로 표현할 수 있는 거대한 &#x27;의미 공간&#x27;이라는 지도가 있다고 상상해 보세요.
+
+- &#x27;사과&#x27;와 &#x27;오렌지&#x27;는 둘 다 &#x27;과일&#x27;이라는 공통점이 있으므로 지도에서 서로 가까운 곳에 위치합니다.
+- 반면 &#x27;사과&#x27;와 &#x27;자동차&#x27;는 의미가 전혀 다르므로 지도에서 아주 멀리 떨어져 있습니다.
+
+벡터 임베딩은 바로 이 작업을 해줍니다. Gemini와 같은 강력한 AI 모델이 우리 노트의 내용을 읽고, 그 의미를 나타내는 수백 개의 숫자 조합(벡터)으로 변환합니다. 이 숫자 조합이 바로 &#x27;의미 공간&#x27; 지도 위의 고유한 주소(좌표)가 되는 것입니다.
+
+이 과정은 두 단계로 나뉩니다.
+
+1.  **색인 (Indexing):** 우리 위키의 모든 노트에 &#x27;의미 주소&#x27;를 부여하고 지도에 등록하는 과정입니다.
+2.  **검색 (Searching):** 우리의 질문 또한 &#x27;의미 주소&#x27;로 변환한 뒤, 지도에서 가장 가까운 주소를 가진 노트들을 찾는 과정입니다.
+
+```mermaid
+graph TD
+    subgraph 색인 (Indexing)
+        A[노트: 뽀모도로 기법] --&gt; B{Gemini 모델};
+        B --&gt; C[벡터 주소: (0.1, 0.8, ...)];
+        C --&gt; D[벡터 DB에 저장];
+    end
+    subgraph 검색 (Searching)
+        E[질문: 집중력 높이는 법] --&gt; F{Gemini 모델};
+        F --&gt; G[질문 벡터: (0.2, 0.7, ...)];
+        G --&gt; H{벡터 DB에 질문};
+        D -- 가장 가까운 주소 찾기 --&gt; H;
+        H --&gt; I[결과: 노트 &#x27;뽀모도로 기법&#x27;];
+    end
+```
+
+### 1단계: 색인 - 지식 지도 만들기 (`reindex.py`)
+
+`reindex.py` 스크립트는 우리 위키의 모든 노트를 읽어 &#x27;의미 지도&#x27;를 만드는 역할을 합니다. 다행히 이 과정은 대부분 자동으로 처리됩니다. 이전 장에서 배운 `/ingest` 명령어를 실행하면, 새로운 노트를 만든 후 마지막 단계에서 이 색인 과정이 자동으로 실행되기 때문입니다.
+
+`reindex.py` 스크립트는 다음과 같은 일을 합니다.
+
+1.  `wiki/notes/` 폴더에 있는 모든 노트를 확인합니다.
+2.  이전에 색인한 후 내용이 변경되었거나 새로 추가된 노트만 골라냅니다.
+3.  해당 노트의 본문을 Gemini 모델에게 보냅니다.
+4.  Gemini 모델로부터 노트의 의미를 나타내는 벡터(숫자 목록)를 돌려받습니다.
+5.  이 벡터를 노트의 ID와 함께 `wiki/lancedb/`라는 특별한 데이터베이스에 저장합니다.
+
+아래는 `reindex.py` 코드의 일부로, 노트 본문을 받아 벡터로 변환하는 핵심적인 부분입니다.
+
+```python
+# scripts/reindex.py 의 일부
+
+def embed(client, text: str) -&gt; list[float]:
+    # Gemini 모델에게 텍스트의 임베딩을 요청합니다.
+    resp = client.models.embed_content(model=MODEL, contents=text)
+    # 반환된 벡터 값을 돌려줍니다.
+    return resp.embeddings[0].values
+
+# ... (루프 안에서) ...
+for p in NOTES.glob(&quot;*.md&quot;):
+    # ... (생략) ...
+    # 노트 본문을 벡터로 변환
+    vec = embed(client, body[:8000])
+    # ... (데이터베이스에 저장) ...
+```
+이 코드는 각 노트의 텍스트(body)를 `embed` 함수에 전달하여 숫자 목록(vec)을 얻는 과정을 보여줍니다. 이로써 우리의 모든 지식 조각은 검색 가능한 &#x27;의미 주소&#x27;를 갖게 됩니다.
+
+### 2단계: 검색 - 필요한 지식 즉시 소환하기 (`/ask`)
+
+이제 잘 만들어진 지도가 있으니, 길을 찾을 차례입니다. `/ask` 명령어는 우리의 지능형 검색창 역할을 합니다.
+
+Claude Code 채팅창에 여러분의 위키와 관련된 질문을 해보세요.
+
+```
+/ask 제텔카스텐의 핵심 원칙은 무엇인가요?
+```
+
+이 명령을 내리면, 다음과 같은 일이 순식간에 일어납니다.
+
+1.  Claude가 `scripts/search.py` 스크립트를 이용해 여러분의 질문(&quot;제텔카스텐의 핵심 원칙은 무엇인가요?&quot;)을 처리합니다.
+2.  `search.py`는 질문 문장 또한 Gemini 모델을 통해 &#x27;질문 벡터&#x27;로 변환합니다.
+3.  그리고 `wiki/lancedb/` 데이터베이스에 쿼리를 날립니다: &quot;이 질문 벡터와 의미적으로 가장 가까운 노트 벡터 5개를 찾아줘!&quot;
+4.  데이터베이스는 `zettelkasten.md`, `atomic-notes.md` 등 가장 관련성 높은 노트 목록을 반환합니다.
+5.  Claude는 이 노트들의 내용을 읽고, 그 정보를 바탕으로 질문에 대한 답변을 생성합니다.
+6.  마지막으로, 어떤 노트를 참고했는지 `[[zettelkasten]]`처럼 출처를 밝히며 채팅창에 답변을 보여줍니다.
+
+이 모든 과정의 흐름을 순서도로 살펴봅시다.
+
+```mermaid
+sequenceDiagram
+    participant User as 사용자
+    participant Claude as Claude Code
+    participant search.py as 검색 스크립트
+    participant LanceDB as 벡터 DB
+
+    User-&gt;&gt;Claude: /ask 제텔카스텐의 핵심 원칙은?
+    Claude-&gt;&gt;search.py: &quot;제텔카스텐의 핵심 원칙은?&quot; 검색해 줘
+    search.py-&gt;&gt;LanceDB: 질문의 벡터와 가장 가까운 노트 찾아줘
+    LanceDB--&gt;&gt;search.py: 1. zettelkasten.md, 2. atomic-notes.md ...
+    search.py--&gt;&gt;Claude: 관련 노트 목록 반환
+    Claude-&gt;&gt;Claude: 노트 내용을 읽고 답변 종합
+    Claude--&gt;&gt;User: &quot;제텔카스텐의 핵심은... [[zettelkasten]] 노트를 참고하세요.&quot;
+```
+
+아래는 `search.py`가 어떻게 질문을 벡터로 바꾸고 데이터베이스를 검색하는지 보여주는 코드의 일부입니다.
+
+```python
+# scripts/search.py 의 일부
+
+def semantic(query: str, limit: int = 10) -&gt; None:
+    # 1. 질문(query)을 벡터로 변환
+    qvec = embed_query(query)
+    db = lancedb.connect(str(LANCE_DIR))
+    table = db.open_table(&quot;notes&quot;)
+
+    # 2. 데이터베이스에서 가장 가까운 벡터를 검색
+    results = table.search(qvec).limit(limit).to_list()
+
+    # 3. 결과 출력
+    for r in results:
+        print(f&quot;{r[&#x27;id&#x27;]}&quot;) # 찾은 노트의 ID 출력
+```
+
+이처럼 `/ask` 명령어는 단순히 파일을 검색하는 것을 넘어, 여러분이 구축한 지식 네트워크와 &#x27;대화&#x27;할 수 있게 해주는 강력한 기능입니다.
+
+### 정리하며
+
+이번 장에서는 흩어져 있는 노트들을 의미 기반으로 찾아낼 수 있는 지능형 검색 시스템을 구축하는 방법을 배웠습니다.
+
+-   **왜 의미 기반 검색이 중요한가?**: 정확한 키워드를 몰라도 &quot;그 비슷한 얘기&quot;를 찾는 것처럼 자연스러운 질문으로 원하는 정보를 찾을 수 있습니다.
+-   **어떻게 동작하는가?**: 모든 노트를 AI 모델(Gemini)을 통해 &#x27;의미&#x27;를 나타내는 벡터(숫자 좌표)로 변환하고, 이를 특수 데이터베이스(LanceDB)에 저장(색인)합니다. 검색 시에는 질문 또한 벡터로 바꿔 가장 가까운 거리에 있는 노트를 찾습니다.
+-   **어떻게 사용하는가?**: `/ask &lt;질문&gt;` 명령어 하나로 내 위키의 내용을 기반으로 한 답변을 바로 얻을 수 있습니다.
+
+이제 여러분의 &#x27;제2의 뇌&#x27;는 단순히 정보를 저장하는 창고가 아니라, 필요할 때마다 지혜로운 조언을 건네주는 대화형 파트너가 되었습니다. 정보를 수집하고, 가공하고, 필요할 때 꺼내 쓰는 모든 준비가 끝났습니다.
+
+그렇다면 이 모든 것을 활용해 우리는 무엇을 할 수 있을까요? 다음 장에서는 이렇게 잘 정리되고 검색 가능한 노트들을 재료 삼아 완전히 새로운 글이나 보고서를 생성하는 &#x27;종합&#x27; 단계에 대해 알아보겠습니다.
+
+---
+
+다음으로 이동: **[제4장: 종합: 연결된 노트들을 엮어 새로운 글 생성하기](#chapter-4)**
+
+
+&lt;hr class=&quot;chap-sep&quot;/&gt;
+
+&lt;a id=&quot;chapter-4&quot;&gt;&lt;/a&gt;
+
+# Chapter 4: 종합: 연결된 노트들을 엮어 새로운 글 생성하기
+
+
+[이전 장](#chapter-3)에서 우리는 `/ask` 명령어를 통해 우리만의 지식 베이스와 대화하고, 키워드가 아닌 &#x27;의미&#x27;를 기반으로 필요한 노트를 정확히 찾아내는 법을 배웠습니다. 이제 여러분의 &#x27;제2의 뇌&#x27;는 잘 정리된 도서관이자, 똑똑한 사서까지 갖춘 셈입니다.
+
+정보를 수집하고, 증류하고, 검색하는 모든 단계를 거친 이유는 궁극적으로 &#x27;새로운 것을 창조&#x27;하기 위함입니다. 흩어져 있던 지식 조각들을 엮어 나만의 글, 보고서, 아이디어 노트를 만드는 마지막 단계, 바로 &#x27;종합&#x27;입니다.
+
+이번 장에서는 낱개의 노트라는 레고 블록을 조립해 완전히 새로운 창작물을 만드는 방법을 배웁니다. 마치 다큐멘터리 감독이 수많은 영상 클립을 엮어 하나의 이야기를 만드는 것처럼, 우리의 &#x27;제2의 뇌&#x27;가 지식의 조각들을 모아 한 편의 글 초안을 써주는 놀라운 경험을 하게 될 것입니다.
+
+### 문제: 재료는 있는데, 요리가 막막하다
+
+블로그에 &#x27;개인 지식 관리(PKM)의 중요성&#x27;에 대한 글을 쓰고 싶다고 상상해 봅시다. 그동안 제텔카스텐, 원자적 노트, 에버그린 노트 등 관련 노트를 수십 개 모으고 정리해 두었습니다. 이제 막상 글을 쓰려고 하니 어디서부터 시작해야 할지 막막합니다.
+
+- **문제:** 관련 노트는 많지만, 이것들을 어떤 순서로 배열하고 어떤 논리로 엮어야 할지 감이 오지 않는다.
+- **기존 방식:** 여러 노트 파일을 열어두고, 내용을 복사-붙여넣기하며 문맥을 맞추느라 몇 시간을 보낸다. 결국 구조가 엉망이 되거나 시작도 못 하고 포기한다.
+- **Second Brain 방식:** &quot;/brief 개인 지식 관리의 중요성&quot;이라고 명령한다. 시스템이 관련 노트를 전부 찾아 그 내용을 바탕으로 논리적인 구조를 갖춘 초안을 몇 분 만에 작성해준다.
+
+&#x27;종합&#x27; 단계는 이처럼 백지상태의 막막함(Blank Page Syndrome)을 없애고, 여러분이 창작 과정에서 가장 즐거운 부분, 즉 &#x27;아이디어를 다듬고 발전시키는 일&#x27;에만 집중할 수 있도록 돕는 것을 목표로 합니다.
+
+### `/brief`: 당신의 개인 연구 보조원
+
+`/brief` 명령어는 여러분이 던진 주제에 대해 여러분의 위키를 &#x27;연구&#x27;하고, 그 결과를 한 편의 브리핑 문서로 &#x27;종합&#x27;해주는 강력한 기능입니다. 마치 24시간 대기하는 연구 보조원과 같습니다.
+
+Claude Code 채팅창에 다음과 같이 간단히 명령해 보세요.
+
+```
+/brief 제텔카스텐(Zettelkasten) 방법론의 핵심 원칙과 장점
+```
+
+이 명령을 내리면, Claude는 여러분의 노트를 바탕으로 연구를 시작하고, 잠시 후 `wiki/outputs/` 폴더에 다음과 같은 제목의 마크다운 파일을 생성했다는 메시지를 보여줍니다.
+
+`&quot;wiki/outputs/2024-10-29-zettelkasten-methodology-core-principles-and-benefits.md 파일이 생성되었습니다.&quot;`
+
+이 파일을 열어보면, 단순히 관련 노트를 짜깁기한 것이 아니라, 다음과 같이 체계적인 구조를 갖춘 한 편의 글 초안이 작성되어 있는 것을 볼 수 있습니다.
+
+- **요약 (TL;DR):** 전체 내용을 한두 문장으로 압축한 요약.
+- **핵심 포인트:** 글의 주요 주장을 담은 글머리 기호 목록.
+- **세부 내용:** 각 핵심 포인트를 상세히 설명하는 본문.
+- **남은 질문들:** 이 주제에 대해 더 탐구해볼 만한 질문들.
+- **출처:** 이 글을 작성하는 데 참고한 여러분의 노트 목록 (`[[zettelkasten]]`, `[[atomic-notes]]` 등).
+
+이 초안은 완벽하지는 않지만, 글의 뼈대를 잡고 살을 붙여나가기에는 더할 나위 없이 훌륭한 출발점입니다.
+
+### 내부 동작 원리 엿보기
+
+`/brief`라는 간단한 명령어 뒤에서는 어떤 일이 벌어지고 있을까요? 이는 [이전 장](#chapter-3)에서 배운 &#x27;검색&#x27;과 AI의 &#x27;글쓰기 능력&#x27;이 결합된 과정입니다.
+
+```mermaid
+sequenceDiagram
+    participant User as 사용자
+    participant Claude as Claude Code
+    participant search.py as 검색 스크립트
+    participant NotesFolder as `wiki/notes/`
+    participant OutputsFolder as `wiki/outputs/`
+
+    User-&gt;&gt;Claude: /brief 제텔카스텐의 원칙
+    Claude-&gt;&gt;search.py: &quot;제텔카스텐 원칙&quot; 관련 노트 찾아줘
+    search.py--&gt;&gt;Claude: zettelkasten.md, atomic-notes.md 등 관련 노트 목록 반환
+    Claude-&gt;&gt;NotesFolder: 해당 노트 파일들의 내용 읽기
+    Claude-&gt;&gt;Claude: 읽은 내용을 바탕으로 글의 구조를 짜고 초안 작성
+    Claude-&gt;&gt;OutputsFolder: `YYYY-MM-DD-zettelkasten-brief.md` 파일로 저장
+    OutputsFolder--&gt;&gt;Claude: 저장 완료
+    Claude--&gt;&gt;User: &quot;wiki/outputs/에 브리핑 문서를 생성했습니다.&quot;
+```
+
+보시다시피, `/brief`는 먼저 `/ask`처럼 관련 노트를 찾은 다음, 그 내용을 재료로 삼아 새로운 결과물(output)을 만들어내는, 한 단계 더 나아간 작업입니다.
+
+### 코드 깊이 보기: Claude는 어떻게 `/brief`를 수행할까?
+
+Claude가 이 복잡한 작업을 순서대로 수행할 수 있는 이유는 `.claude/commands/brief.md` 파일에 행동 지침이 명확하게 정의되어 있기 때문입니다. 이 파일은 `/brief` 명령을 위한 &#x27;작업 설명서&#x27;입니다.
+
+```yaml
+# .claude/commands/brief.md 파일의 일부
+---
+description: 주제에 대한 관련 노트를 모아 브리핑 문서를 작성합니다.
+---
+
+주제: $ARGUMENTS
+
+당신의 임무는 `wiki/notes/`의 정보만을 사용해 주어진 주제에 대한 브리핑 문서를 작성하는 것입니다.
+
+단계:
+
+1. `python scripts/search.py &quot;&lt;주제 키워드&gt;&quot;`를 실행하여 관련 노트를 찾습니다.
+2. ...
+3. 상위 10개 정도의 노트를 모두 읽습니다.
+4. ...
+5. `wiki/outputs/&lt;날짜&gt;-&lt;슬러그&gt;.md` 경로에 TL;DR, 핵심 포인트, 세부 내용, 출처 등의 섹션을 포함한 초안을 작성합니다.
+6. &quot;출처&quot;에는 사용한 노트 ID를 글머리 기호 목록으로 나열합니다.
+...
+```
+
+이 설명서는 Claude에게 다음을 지시합니다.
+1.  먼저 `scripts/search.py`를 사용해 주제와 관련된 노트를 최대한 찾아내라.
+2.  그 노트들의 내용을 꼼꼼히 읽어라.
+3.  그 정보를 바탕으로, 정해진 형식에 맞춰 `wiki/outputs/` 폴더에 새로운 마크다운 파일을 작성하라.
+
+이처럼 명확한 지침이 있기에 Claude는 매번 일관된 품질의 결과물을 만들어낼 수 있습니다.
+
+### `wiki/outputs/`: 당신의 창작물 작업실
+
+이 시스템의 폴더들은 각기 다른 역할을 가집니다.
+
+| 폴더 | 규칙 | 역할 |
+|---|---|---|
+| `wiki/raw/` | **추가만 가능** | 원본 아카이브, 영구 보관소 |
+| `wiki/notes/` | **자유롭게 수정** | 살아있는 지식 네트워크, 핵심 자산 |
+| `wiki/outputs/` | **언제든 삭제 가능** | 결과물, 임시 작업 공간 |
+
+`outputs/` 폴더는 여러분의 &#x27;작업실&#x27;과 같습니다. Claude가 만들어준 초안을 바탕으로 글을 완성한 뒤 블로그에 발행했다면, 이 폴더의 파일은 더 이상 필요 없으니 언제든 지워도 괜찮습니다. 핵심 지식은 `notes/` 폴더에 그대로 남아있으므로, 나중에 같은 주제로 또 다른 글을 쓰고 싶다면 언제든 다시 `/brief` 명령을 내리면 됩니다.
+
+### 정리하며
+
+이번 장에서는 &#x27;제2의 뇌&#x27; 워크플로우의 최종 단계인 &#x27;종합&#x27;에 대해 배웠습니다.
+
+- **왜 종합이 중요한가?**: 흩어져 있는 지식 조각들을 엮어 실질적인 결과물(글, 보고서 등)을 만들어내는 창작의 단계이기 때문입니다. 이는 지식 관리의 궁극적인 목표입니다.
+- **어떻게 종합하는가?**: `/brief &lt;주제&gt;` 명령어 하나로, 내 위키의 관련 노트를 총동원하여 체계적인 구조를 갖춘 초안을 자동으로 생성할 수 있습니다.
+- **`wiki/outputs/` 폴더의 역할**: `/brief`를 통해 생성된 결과물이 저장되는 임시 작업 공간입니다. 이곳의 파일들은 언제든 수정하거나 삭제해도 괜찮습니다.
+
+이제 여러분은 단순히 정보를 모으고 정리하는 것을 넘어, 축적된 지식을 바탕으로 새로운 가치를 창출하는 강력한 시스템을 갖추게 되었습니다. Claude가 생성해준 초안은 훌륭한 시작점이지만, 아직은 여러분의 독특한 목소리와 깊이 있는 통찰이 더해지지 않은 상태입니다.
+
+다음 장에서는 이렇게 만들어진 초안을 AI와 함께 &#x27;대화&#x27;하며 다듬고 발전시켜 최종 결과물로 완성해나가는 &#x27;협업 글쓰기&#x27; 과정에 대해 알아보겠습니다.
+
+---
+
+다음으로 이동: **[제5장: 협업 글쓰기: AI와 함께 초안 다듬기](#chapter-5)**
+
+
+&lt;hr class=&quot;chap-sep&quot;/&gt;
+
+&lt;a id=&quot;chapter-5&quot;&gt;&lt;/a&gt;
+
+# Chapter 5: 협업 글쓰기: AI와 함께 초안 다듬기
+
+
+[이전 장](#chapter-4)에서 우리는 `/brief` 명령어를 통해 흩어져 있던 지식 조각들을 엮어 논리적인 구조를 갖춘 글의 초안을 만드는 &#x27;종합&#x27; 단계를 마쳤습니다. 이제 여러분의 `wiki/outputs/` 폴더에는 여러분의 지식 베이스를 바탕으로 생성된 훌륭한 출발점이 준비되어 있습니다.
+
+하지만 AI가 생성한 초안은 마치 잘 만들어진 보고서와 같습니다. 정보는 정확하지만, 아직 독자의 마음을 사로잡는 매력이나 여러분만의 독특한 목소리는 부족할 수 있습니다. 특히 블로그 포스트나 소셜 미디어 글처럼 짧고 강렬한 인상을 남겨야 할 때, 이 초안을 어떻게 매력적인 최종 결과물로 다듬을 수 있을까요?
+
+이번 마지막 장에서는 이 모든 과정의 화룡점정, 즉 AI를 단순한 정보 요약기가 아닌 창의적인 파트너로 삼아 글을 함께 완성하는 &#x27;협업 글쓰기&#x27; 과정을 배워보겠습니다.
+
+### 문제: 훌륭한 재료로 평범한 요리를 만들 수는 없다
+
+`/brief`로 생성된 &#x27;제텔카스텐 방법론&#x27;에 대한 글이 있다고 상상해 봅시다. 내용은 알차지만, 이 글을 소셜 미디어에 공유하기에는 너무 길고 학술적입니다. &quot;제텔카스텐이 정말로 생산성을 높여줄까?&quot;라는 도발적인 질문을 던지는 짧은 글로 바꾸고 싶다면 어떻게 해야 할까요?
+
+- **문제:** 정보가 풍부한 긴 글을, 특정 &#x27;관점&#x27;이나 &#x27;훅(hook)&#x27;을 담은 짧고 흡입력 있는 글로 바꾸기가 어렵다.
+- **기존 방식:** 긴 글의 내용을 이리저리 복사해 붙여넣으며 문장을 줄여보지만, 결국 원래 글의 밋밋한 요약본이 되기 십상이다.
+- **Second Brain 방식:** `shortwrite.html`이라는 편집실에서, 긴 글을 참고 자료로 삼아 &quot;이런 도발적인 관점으로 글을 다듬어줘&quot;라고 AI 편집자에게 지시한다. AI가 손이 많이 가는 재구성 작업을 처리하는 동안, 나는 더 창의적인 아이디어를 구상하는 데 집중한다.
+
+이는 마치 다큐멘터리 감독이 수백 시간의 촬영 원본을 전문 편집자에게 넘기며 &quot;주인공의 내적 갈등에 초점을 맞춰 10분짜리 예고편을 만들어주세요&quot;라고 디렉팅하는 것과 같습니다. 감독은 창의적인 방향만 제시하고, 편집자는 그 의도에 맞춰 수많은 영상 클립을 자르고 붙이는 힘든 작업을 대신해 줍니다.
+
+### `shortwrite.html`: 당신과 AI의 공동 편집실
+
+`shortwrite.html`은 우리 프로젝트의 루트 폴더에 있는 특별한 웹페이지입니다. 이 파일은 인간 작가(바로 당신)와 AI 편집자가 함께 글을 완성하기 위해 만들어진 &#x27;공동 편집실&#x27;입니다.
+
+이 편집실은 두 개의 창으로 나뉘어 있습니다.
+
+1.  **왼쪽 창 (📖 원본):** 참고할 긴 글 (예: `/brief`로 만든 초안)이 표시되는 곳입니다. 이곳의 내용은 수정할 수 없는, 오직 읽기 전용 참고 자료입니다.
+2.  **오른쪽 창 (✍️ 초안):** 우리가 실제로 작성하고 다듬을 짧은 글이 있는 곳입니다. 이곳에서 당신과 AI가 번갈아 가며 글을 수정하게 됩니다.
+
+`shortwrite.html`을 웹 브라우저에서 열고 (로컬 서버를 통해 여는 것을 권장합니다), 왼쪽에는 참고할 긴 글을, 오른쪽에는 새로 만들 짧은 글의 파일을 열어보세요.
+
+!https://user-images.githubusercontent.com/1521976/282247547-38038b39-8671-4033-a309-86eb79346610.png
+
+이 편집실의 핵심은 오른쪽 초안 파일의 **프런트매터(frontmatter)**에 있습니다.
+
+```yaml
+---
+title:
+angle:        # 이 글이 취하는 특정 관점/훅 (예: 도발적인 질문 - &quot;정말 지식 관리가 필요한가?&quot;)
+hook_type:    # SNS 글쓰기 패턴 (예: 정면반박, 고백+깨달음)
+source: 2024-10-29-zettelkasten-brief.md # 참고한 원본 파일명
+format: short
+status: draft
+---
+
+(여기에 글의 본문이 들어갑니다)
+```
+
+여기서 가장 중요한 필드는 `angle`입니다. 바로 이 `angle`이 인간 감독인 당신이 AI 편집자에게 내리는 &#x27;창의적 지시&#x27;입니다.
+
+### AI와 함께 춤을: `/shortwrite` 워크플로우
+
+이제 이 편집실에서 AI와 어떻게 협업하는지 단계별로 알아봅시다.
+
+1.  **작업 공간 준비:** `shortwrite.html`에서 원본 글과 초안 파일을 엽니다.
+2.  **창의적 방향 제시:** 초안 파일의 `angle` 필드에 당신이 원하는 글의 관점이나 핵심 메시지를 명확하게 적습니다. 예를 들어, &quot;데이터 수집을 멈춰야 하는 이유에 대한 도발적 주장&quot; 처럼요.
+3.  **AI에게 작업 지시:** 이제 Claude Code 채팅창으로 돌아와 다음과 같이 명령합니다.
+    ```
+    /shortwrite
+    이 초안 파일을 &#x27;angle&#x27;에 맞춰 다듬어줘.
+    ```
+4.  **AI의 편집 작업:** Claude는 당신의 지시를 받고, 초안 파일과 원본 파일을 모두 읽습니다. 그리고 당신이 `angle`에 명시한 의도를 파악하여, 원본의 내용을 바탕으로 초안 전체를 새롭게 재구성하거나 다듬습니다.
+5.  **결과 확인 및 추가 지시:** Claude가 작업을 마치면, `shortwrite.html` 브라우저 창으로 돌아가 &#x27;초안 열기/⟳&#x27; 버튼을 눌러 AI가 수정한 내용을 불러옵니다. 결과를 보고 마음에 들지 않는 부분이 있다면, `angle`을 더 구체적으로 수정하거나 채팅으로 추가 지시를 내립니다. &quot;조금 더 부드러운 논조로 바꿔줘&quot; 또는 &quot;마지막에 강력한 행동 촉구 문장을 넣어줘&quot; 와 같이요.
+
+이 과정을 몇 번 반복하면, 단순한 정보의 나열이었던 초안이 당신의 의도가 완벽하게 반영된, 날카롭고 설득력 있는 글로 재탄생하게 됩니다.
+
+### 내부 동작 원리 엿보기
+
+`/shortwrite` 워크플로우는 AI와 인간이 하나의 파일을 사이에 두고 대화를 주고받는 턴제(turn-based) 협업 방식입니다.
+
+```mermaid
+sequenceDiagram
+    participant User as 사용자
+    participant Browser as 브라우저 (shortwrite.html)
+    participant Claude as Claude Code
+    participant Filesystem as 로컬 파일 시스템
+
+    User-&gt;&gt;Browser: 원본/초안 파일 열기
+    User-&gt;&gt;Browser: 초안 프런트매터에 &#x27;angle&#x27; 정의 후 저장
+    User-&gt;&gt;Claude: &quot;/shortwrite, 이 angle로 다듬어줘&quot;
+    Claude-&gt;&gt;Filesystem: 원본 파일과 초안 파일을 읽기
+    Claude-&gt;&gt;Claude: &#x27;angle&#x27;에 맞춰 초안 내용 재작성
+    Claude-&gt;&gt;Filesystem: 수정된 내용으로 초안 파일 덮어쓰기
+    Claude--&gt;&gt;User: &quot;초안 파일을 수정했습니다. 브라우저에서 새로고침 하세요.&quot;
+    User-&gt;&gt;Browser: 초안 새로고침 (⟳)
+    Browser-&gt;&gt;Filesystem: 수정된 초안 파일 읽어오기
+    Filesystem--&gt;&gt;Browser: 최신 내용 표시
+```
+
+이 과정의 핵심은 Claude에게 어떻게 행동해야 하는지를 알려주는 설명서, `.claude/skills/shortwrite/SKILL.md` 파일에 있습니다.
+
+```yaml
+# .claude/skills/shortwrite/SKILL.md 파일의 일부
+---
+name: shortwrite
+description: 긴 원본 글에서 특정 관점을 가진 짧은 글을 파생시킬 때 사용합니다...
+---
+
+# Shortwrite — 긴 원본 → 특정 관점의 짧은 글
+
+## 초안 파일의 약속
+
+모든 짧은 초안은 다음과 같은 프런트매터를 가집니다. **`angle`과 `hook_type` 필드가 가장 중요합니다**:
+
+```
+---
+title:
+angle:        # 이 글이 취하는 특정 관점/훅
+hook_type:    # 고백+깨달음 / 숫자+반전 / ...
+source:       # 긴 원본 글의 파일명
+...
+---
+```
+
+## 작업 순서
+
+1.  ...
+2.  사용자가 &quot;이 관점으로 써줘 / 다듬어줘&quot; 라고 말하면:
+   a. **원본 글 전체를 읽으세요** — 사실 관계의 기준이 됩니다.
+   b. **초안을 읽으세요** — 특히 `angle`과 `hook_type`을 주의 깊게 보세요. `angle`이 무엇을 남기고 무엇을 버릴지 결정합니다. *하나의 글에는 하나의 관점만 담습니다.*
+   c. `angle`을 가장 잘 살리는 내용만 원본에서 뽑아내 **짧은 초안을 작성하세요**.
+...
+```
+
+이 설명서는 Claude에게 &quot;당신은 전문 편집자입니다. 작가가 `angle`로 방향을 제시하면, 당신은 원본 내용을 벗어나지 않는 선에서 그 의도를 가장 잘 구현하는 글을 만들어내야 합니다.&quot; 라고 명확히 알려줍니다.
+
+### 정리하며: 창작의 여정을 마치며
+
+이번 장에서는 자동 생성된 초안을 AI와 함께 다듬어 최종 결과물로 완성하는 &#x27;협업 글쓰기&#x27;에 대해 배웠습니다.
+
+- **왜 협업 글쓰기가 중요한가?**: 창의적인 방향 제시는 인간이, 고된 편집 작업은 AI가 맡음으로써, 인간은 지루한 타이핑에서 벗어나 더 높은 수준의 창작 활동에 집중할 수 있습니다.
+- **어떻게 협업하는가?**: `shortwrite.html`이라는 공동 편집실에서, 초안 파일의 `angle` 필드를 통해 AI에게 창의적인 지시를 내리고, 결과물을 확인하며 대화하듯 글의 완성도를 함께 높여갑니다.
+
+이것으로 &#x27;Second Brain 워크플로우&#x27;의 모든 여정이 끝났습니다. 우리는 웹상의 정보를 **수집**하는 것에서 시작하여, 그것을 원자적 노트로 **증류 및 연결**하고, 의미 기반으로 **검색**하여, 새로운 글을 **종합**한 뒤, 마지막으로 AI와 **협업하여 다듬는** 전 과정을 경험했습니다.
+
+이제 여러분은 단순히 정보를 소비하는 것을 넘어, 지식을 자신만의 것으로 만들고 새로운 가치를 창출하는 강력하고 체계적인 시스템을 갖추게 되었습니다. 이 &#x27;제2의 뇌&#x27;는 여러분의 학습과 성장을 돕는 평생의 파트너가 되어줄 것입니다. 여러분만의 지식 정원을 가꾸는 즐거움을 마음껏 누리시길 바랍니다
+
+---
+
+
+&lt;hr class=&quot;chap-sep&quot;/&gt;
+
+</textarea>
+<script type="module">
+import { marked } from 'https://cdn.jsdelivr.net/npm/marked@4.3.0/lib/marked.esm.js';
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+
+const src = document.getElementById('source').value;
+const renderer = new marked.Renderer();
+renderer.code = function(code, infostring){
+  const lang = (infostring||'').trim().split(/\s+/)[0];
+  if (lang === 'mermaid') return '<pre class="mermaid">'+code+'</pre>';
+  const esc = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return '<pre><code>'+esc+'</code></pre>';
+};
+document.getElementById('content').innerHTML =
+  marked.parse(src, { renderer, mangle:false, headerIds:true });
+
+mermaid.initialize({ startOnLoad:false, securityLevel:'loose', theme:'neutral' });
+try { await mermaid.run({ querySelector:'.mermaid' }); } catch(e){ console.error('mermaid', e); }
+
+// Highlight the current section in the sidebar while scrolling
+const links = [...document.querySelectorAll('nav.toc a')];
+const targets = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const byId = Object.fromEntries(links.map(a => [a.getAttribute('href').slice(1), a]));
+const obs = new IntersectionObserver((entries)=>{
+  entries.forEach(en=>{
+    if(en.isIntersecting){
+      links.forEach(l=>l.classList.remove('active'));
+      const a = byId[en.target.id]; if(a) a.classList.add('active');
+    }
+  });
+}, { rootMargin:'0px 0px -75% 0px', threshold:0 });
+targets.forEach(t=>obs.observe(t));
+</script>
+</body>
+</html>
