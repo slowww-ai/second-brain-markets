@@ -309,10 +309,10 @@ python scripts/dashboard.py --port 8000
 
 ### 🛠 How it works
 
-One URL becomes a note, and notes become a finished piece — here's the whole flow at a glance. Four stages — **capture → vault → index & retrieve → co-write** — with vectors stored in LanceDB and the link graph & ledger in SQLite.
+One URL becomes a note, and notes become a finished piece — here's the whole flow at a glance: **you capture → Claude processes (`/jina-capture`, `/ingest`, `/brief`) → everything is stored as searchable markdown**, with vectors in LanceDB and the link graph & ledger in SQLite.
 
 <p align="center">
-  <img src="docs/contents-database-workflow-en.svg" alt="Second Brain workflow — ① capture ② vault ③ index & retrieve ④ co-write with Claude" width="900">
+  <img src="docs/how_it_works_eng.png" alt="Second Brain workflow — User Input → Claude Processing → Stored Data / Markdown / DB" width="900">
 </p>
 
 ### Full folder layout
