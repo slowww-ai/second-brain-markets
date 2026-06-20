@@ -21,7 +21,7 @@
 
 ## 🇰🇷 한국어
 
-> 📖 **[Second Brain 작동 원리 튜토리얼 →](docs/tutorial-how%20it%20works%20under%20the%20hood.html)** — 시스템이 내부에서 어떻게 동작하는지 차근차근 설명하는 가이드입니다.
+> 📖 **[Second Brain 작동 원리 튜토리얼 →](https://htmlpreview.github.io/?https://github.com/slowww-ai/second-brain/blob/main/docs/tutorial.html)** — 시스템이 내부에서 어떻게 동작하는지 차근차근 설명하는 가이드입니다.
 
 ### 이게 뭔가요?
 
