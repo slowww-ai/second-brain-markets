@@ -4,126 +4,54 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>Second Brain Workflow 튜토리얼</title>
-<script src="https://cdn.jsdelivr.net/npm/page-flip/dist/js/page-flip.browser.js"></script>
 <style>
-  :root{ --accent:#3b6ea5; --ink:#2b2620; --paper:#fdfaf2; --border:#e4d9c2; --muted:#8a7f6b; }
-  *{ box-sizing:border-box; }
-  html,body{ height:100%; }
-  body{ margin:0; color:var(--ink);
-        font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR",Segoe UI,Roboto,sans-serif;
-        background:radial-gradient(120% 120% at 50% 0%, #4a4036 0%, #2c251d 60%, #221c15 100%);
-        -webkit-font-smoothing:antialiased; }
-  .reader{ display:flex; flex-direction:column; height:100vh; }
-
-  .bar{ display:flex; align-items:center; justify-content:space-between; gap:16px;
-        padding:10px 18px; color:#f3ead6; flex:0 0 auto; }
-  .bar-title{ font-weight:700; font-size:15px; }
-  .bar-tools{ display:flex; align-items:center; gap:8px; font-size:13px; color:#cdbfa3; }
-  .bar-tools select{ font:inherit; font-size:13px; padding:5px 8px; border-radius:8px;
-        border:1px solid #5d513f; background:#332b21; color:#f3ead6; max-width:54vw; }
-
-  .stage{ flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center;
-          gap:14px; padding:6px 14px 14px; overflow:hidden; }
-  .book-wrap{ flex:1 1 auto; min-width:0; height:100%; display:flex; align-items:center; justify-content:center; }
-  #book{ transition:opacity .35s ease; }
-  #book.loading{ opacity:0; }
-
-  .nav{ flex:0 0 auto; width:46px; height:46px; border-radius:50%; border:none; cursor:pointer;
-        background:rgba(255,255,255,.12); color:#fff; font-size:26px; line-height:1;
-        display:flex; align-items:center; justify-content:center; transition:background .15s, transform .1s; }
-  .nav:hover{ background:rgba(255,255,255,.24); }
-  .nav:active{ transform:scale(.92); }
-
-  .statusbar{ flex:0 0 auto; text-align:center; color:#b9ac92; font-size:12px; padding:0 0 12px; letter-spacing:.02em; }
-
-  /* ---- book pages ---- */
-  .page{ width:470px; background:var(--paper); color:var(--ink); }
-  .page-content{ height:100%; overflow-y:auto; overflow-x:hidden; padding:34px 32px 42px; font-size:15px; line-height:1.7; }
-  .page-content::-webkit-scrollbar{ width:8px; }
-  .page-content::-webkit-scrollbar-thumb{ background:#d8cbb0; border-radius:4px; }
-  .page-num{ position:absolute; bottom:12px; left:0; right:0; text-align:center; font-size:11px; color:var(--muted); }
-
-  .page-content h1{ font-size:1.5em; margin:.1em 0 .7em; padding-bottom:.25em; border-bottom:2px solid var(--border);
-        font-family:Georgia,"Apple SD Gothic Neo","Noto Serif KR",serif; color:#1f1a14; line-height:1.3; }
-  .page-content h2{ font-size:1.24em; margin:1.05em 0 .45em; font-family:Georgia,"Apple SD Gothic Neo",serif; }
-  .page-content h3{ font-size:1.08em; margin:1em 0 .4em; color:#33526f; }
-  .page-content p{ margin:.6em 0; }
-  .page-content ul,.page-content ol{ margin:.5em 0; padding-left:1.3em; }
-  .page-content li{ margin:.25em 0; }
-  .page-content img{ max-width:100%; border-radius:6px; }
-  .page-content a{ color:var(--accent); }
-  .page-content code{ background:#efe7d4; padding:.12em .38em; border-radius:5px; font-size:.86em;
-        font-family:"SF Mono",SFMono-Regular,Menlo,Consolas,monospace; }
-  .page-content pre{ background:#272320; color:#ece3d0; padding:13px 15px; border-radius:9px;
-        overflow-x:auto; font-size:.8em; line-height:1.5; }
-  .page-content pre code{ background:none; padding:0; color:inherit; font-size:1em; }
-  .page-content pre.mermaid{ background:#fff; border:1px solid var(--border); text-align:center; padding:10px; overflow-x:auto; }
-  .page-content pre.mermaid svg{ max-width:100%; height:auto; }
-  .page-content blockquote{ margin:.8em 0; padding:.4em 1em; border-left:4px solid var(--accent);
-        background:#f3ecdb; border-radius:0 8px 8px 0; color:#4a4234; }
-  .page-content table{ border-collapse:collapse; width:100%; margin:.8em 0; font-size:.84em; }
-  .page-content th,.page-content td{ border:1px solid var(--border); padding:6px 9px; text-align:left; }
-  .page-content th{ background:#f1e9d6; }
-  .page-content hr{ display:none; }
-
-  /* ---- covers ---- */
-  .page--cover{ background:linear-gradient(150deg,#2f5d7c 0%,#21465f 55%,#18384d 100%); color:#f4ecda; }
-  .page--cover .page-content{ display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:14px; }
-  .cover-emoji{ font-size:54px; }
-  .page--cover h1{ font-family:Georgia,serif; font-size:2em; line-height:1.2; border:none; color:#fff; margin:0; }
-  .cover-sub{ color:#bcd3e4; font-size:.95em; }
-  .cover-hint{ color:#cfe0ee; font-size:.85em; }
-  .cover-foot{ margin-top:auto; color:#8fb0c6; font-size:.8em; font-family:"SF Mono",Menlo,monospace; }
-  .gold{ color:#e8c879; }
-
-  @media (max-width:640px){
-    .bar-title{ font-size:13px; }
-    .nav{ width:38px; height:38px; font-size:22px; }
-    .page-content{ padding:24px 20px 34px; }
-  }
-
-  /* tap-to-zoom affordance on inline diagrams */
-  .page-content pre.mermaid{ position:relative; cursor:zoom-in; }
-  .page-content pre.mermaid::after{ content:"🔍 확대"; position:absolute; top:6px; right:8px;
-        font-size:10.5px; color:#5c564d; background:rgba(255,255,255,.85); border:1px solid var(--border);
-        padding:1px 6px; border-radius:10px; opacity:.7; }
-
-  /* fullscreen diagram zoom viewer */
-  #zoomModal{ position:fixed; inset:0; z-index:1000; display:none; }
-  #zoomModal.open{ display:block; }
-  .zoom-backdrop{ position:absolute; inset:0; background:rgba(20,16,12,.86); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); }
-  .zoom-stage{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; overflow:hidden; cursor:grab; touch-action:none; }
-  .zoom-stage.grabbing{ cursor:grabbing; }
-  .zoom-canvas{ will-change:transform; }
-  .zoom-canvas svg{ display:block; background:#fff; border-radius:10px; padding:16px;
-        max-width:92vw; max-height:84vh; box-shadow:0 18px 60px rgba(0,0,0,.5); }
-  .zoom-bar{ position:absolute; bottom:22px; left:50%; transform:translateX(-50%); display:flex; gap:8px;
-        background:rgba(40,34,27,.92); padding:8px; border-radius:14px; box-shadow:0 8px 24px rgba(0,0,0,.4); }
-  .zoom-bar button{ width:42px; height:42px; border:none; border-radius:9px; cursor:pointer; font-size:20px; line-height:1;
-        background:#564a3a; color:#f4ecda; display:flex; align-items:center; justify-content:center; transition:background .12s; }
-  .zoom-bar button:hover{ background:#6c5d49; }
-  .zoom-hint{ position:absolute; top:18px; left:50%; transform:translateX(-50%); color:#d8cbb0; font-size:12.5px;
-        background:rgba(40,34,27,.7); padding:6px 12px; border-radius:20px; white-space:nowrap; }
-  @media (max-width:640px){ .zoom-hint{ font-size:11px; max-width:90vw; text-align:center; white-space:normal; } }
+  :root { --accent:#3b6ea5; --bg:#fbfbfa; --sidebar:#f3f4f6; --border:#e5e7eb; --text:#1f2328; }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; background:var(--bg); color:var(--text);
+         font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard","Noto Sans KR",Segoe UI,Roboto,sans-serif;
+         line-height:1.75; font-size:17px; }
+  .layout { display:flex; align-items:flex-start; }
+  nav.toc { position:sticky; top:0; height:100vh; overflow-y:auto; flex:0 0 280px;
+            background:var(--sidebar); border-right:1px solid var(--border); padding:24px 18px; }
+  nav.toc h2 { font-size:13px; letter-spacing:.04em; text-transform:uppercase; color:#6b7280; margin:0 0 14px; }
+  nav.toc a { display:block; padding:7px 10px; margin:2px 0; border-radius:7px; text-decoration:none;
+              color:#374151; font-size:14.5px; transition:background .12s,color .12s; }
+  nav.toc a:hover { background:#e5e7eb; color:var(--accent); }
+  nav.toc a.active { background:var(--accent); color:#fff; }
+  main { flex:1 1 auto; min-width:0; display:flex; justify-content:center; padding:48px 32px 120px; }
+  article { width:100%; max-width:820px; }
+  article h1 { font-size:1.9em; margin:1.6em 0 .6em; padding-bottom:.25em; border-bottom:2px solid var(--border); }
+  article h2 { font-size:1.45em; margin:1.5em 0 .5em; }
+  article h3 { font-size:1.2em; margin:1.3em 0 .4em; }
+  article img { max-width:100%; }
+  article code { background:#eef0f3; padding:.15em .4em; border-radius:5px; font-size:.88em;
+                 font-family:"SF Mono",SFMono-Regular,Menlo,Consolas,monospace; }
+  article pre { background:#1f2328; color:#e6edf3; padding:16px 18px; border-radius:10px; overflow-x:auto; }
+  article pre code { background:none; padding:0; color:inherit; font-size:.86em; }
+  article pre.mermaid { background:#fff; border:1px solid var(--border); text-align:center; }
+  article blockquote { margin:1em 0; padding:.4em 1.1em; border-left:4px solid var(--accent);
+                       background:#eef3f8; color:#374151; border-radius:0 8px 8px 0; }
+  article table { border-collapse:collapse; width:100%; margin:1em 0; font-size:.95em; }
+  article th, article td { border:1px solid var(--border); padding:8px 12px; text-align:left; }
+  article th { background:#f3f4f6; }
+  hr.chap-sep { border:none; border-top:1px dashed #cbd5e1; margin:64px 0; }
+  a { color:var(--accent); }
+  @media (max-width:760px){ nav.toc{display:none;} main{padding:24px 16px 80px;} }
 </style>
 </head>
 <body>
-<div class="reader">
-  <div class="bar">
-    <div class="bar-title">📖 Second Brain Workflow 튜토리얼</div>
-    <div class="bar-tools">
-      <label for="chapterJump">장 이동</label>
-      <select id="chapterJump"><option>불러오는 중…</option></select>
-    </div>
-  </div>
-
-  <div class="stage">
-    <button class="nav" id="prevBtn" aria-label="이전 페이지" title="이전 (←)">‹</button>
-    <div class="book-wrap"><div id="book" class="loading"></div></div>
-    <button class="nav" id="nextBtn" aria-label="다음 페이지" title="다음 (→)">›</button>
-  </div>
-
-  <div class="statusbar"><span id="pageInfo">– / –</span> &nbsp;·&nbsp; 화살표 키 ← → 또는 책 모서리를 잡아 넘기세요</div>
+<div class="layout">
+  <nav class="toc">
+    <h2>Second Brain Workflow 튜토리얼</h2>
+    <a href="#intro">개요 (Overview)</a>
+    <a href="#chapter-1">1. 수집: URL을 원재료(raw)로 저장하기</a>
+    <a href="#chapter-2">2. 증류 및 연결: 원재료를 원자적 노트로 가공하기</a>
+    <a href="#chapter-3">3. 벡터 색인 및 검색: 노트를 의미 기반으로 찾기</a>
+    <a href="#chapter-4">4. 종합: 연결된 노트들을 엮어 새로운 글 생성하기</a>
+    <a href="#chapter-5">5. 협업 글쓰기: AI와 함께 초안 다듬기</a>
+  </nav>
+  <main><article id="content">불러오는 중…</article></main>
 </div>
 <textarea id="source" hidden>&lt;a id=&quot;intro&quot;&gt;&lt;/a&gt;
 
@@ -491,17 +419,17 @@ def record(raw_name: str, produced: str) -&gt; None:
 
 ```mermaid
 graph TD
-    subgraph idx[&quot;색인 (Indexing)&quot;]
-        A[&quot;노트: 뽀모도로 기법&quot;] --&gt; B{&quot;Gemini 모델&quot;}
-        B --&gt; C[&quot;벡터 주소: (0.1, 0.8, ...)&quot;]
-        C --&gt; D[&quot;벡터 DB에 저장&quot;]
+    subgraph 색인 (Indexing)
+        A[노트: 뽀모도로 기법] --&gt; B{Gemini 모델};
+        B --&gt; C[벡터 주소: (0.1, 0.8, ...)];
+        C --&gt; D[벡터 DB에 저장];
     end
-    subgraph srch[&quot;검색 (Searching)&quot;]
-        E[&quot;질문: 집중력 높이는 법&quot;] --&gt; F{&quot;Gemini 모델&quot;}
-        F --&gt; G[&quot;질문 벡터: (0.2, 0.7, ...)&quot;]
-        G --&gt; H{&quot;벡터 DB에 질문&quot;}
-        D -- &quot;가장 가까운 주소 찾기&quot; --&gt; H
-        H --&gt; I[&quot;결과: 노트 &#x27;뽀모도로 기법&#x27;&quot;]
+    subgraph 검색 (Searching)
+        E[질문: 집중력 높이는 법] --&gt; F{Gemini 모델};
+        F --&gt; G[질문 벡터: (0.2, 0.7, ...)];
+        G --&gt; H{벡터 DB에 질문};
+        D -- 가장 가까운 주소 찾기 --&gt; H;
+        H --&gt; I[결과: 노트 &#x27;뽀모도로 기법&#x27;];
     end
 ```
 
@@ -894,9 +822,6 @@ source:       # 긴 원본 글의 파일명
 import { marked } from 'https://cdn.jsdelivr.net/npm/marked@4.3.0/lib/marked.esm.js';
 import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
 
-const PageFlip = (window.St && window.St.PageFlip) || window.PageFlip;
-
-// 1) Markdown -> HTML (mermaid fences become <pre class="mermaid">)
 const src = document.getElementById('source').value;
 const renderer = new marked.Renderer();
 renderer.code = function(code, infostring){
@@ -905,199 +830,25 @@ renderer.code = function(code, infostring){
   const esc = code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   return '<pre><code>'+esc+'</code></pre>';
 };
-const temp = document.createElement('div');
-temp.innerHTML = marked.parse(src, { renderer, mangle:false, headerIds:true });
+document.getElementById('content').innerHTML =
+  marked.parse(src, { renderer, mangle:false, headerIds:true });
 
-// 2) Split the flow into pages, starting a fresh page at each H1/H2/H3.
-//    Bare anchors (<a id="chapter-2">) are remembered so in-book links can flip to them.
-const isEmpty = el => !el.textContent.trim() && !el.querySelector('img,svg,pre,table');
-const sections = [];
-const sectionIds = {};                  // section index -> [anchor ids that target it]
-let cur = null, pendingIds = [];
-const start = () => {
-  cur = []; sections.push(cur);
-  if (pendingIds.length){ sectionIds[sections.length-1] = pendingIds; pendingIds = []; }
-};
-for (const el of [...temp.children]){
-  if (el.tagName === 'HR') continue;                       // drop chapter separators
-  if (el.tagName === 'A' && isEmpty(el)){ if (el.id) pendingIds.push(el.id); continue; }
-  if (cur && !cur.length && isEmpty(el)) continue;         // no leading blanks
-  if (/^H[123]$/.test(el.tagName) && cur && cur.length) start();
-  if (!cur) start();
-  cur.push(el);
-}
-
-// 3) Build the book DOM (front cover + content pages + back cover)
-const bookEl = document.getElementById('book');
-const chapters = [{ title:'표지 (Cover)', abs:0 }];
-
-const addCover = (cls, html) => {
-  const p = document.createElement('div');
-  p.className = 'page page--cover ' + cls;
-  p.setAttribute('data-density','hard');
-  const c = document.createElement('div'); c.className = 'page-content'; c.innerHTML = html;
-  p.appendChild(c); bookEl.appendChild(p);
-};
-
-addCover('', `
-  <div class="cover-emoji">📖</div>
-  <h1>Second Brain<br><span class="gold">Workflow</span></h1>
-  <div class="cover-sub">작동 원리를 차근차근 — 튜토리얼</div>
-  <div class="cover-hint">페이지를 넘겨 시작하세요 →</div>
-  <div class="cover-foot">slowww-ai / second-brain</div>`);
-
-sections.forEach((els, i) => {
-  const page = document.createElement('div'); page.className = 'page';
-  const content = document.createElement('div'); content.className = 'page-content';
-  els.forEach(e => content.appendChild(e));               // move rendered nodes onto the page
-  page.appendChild(content);
-  const num = document.createElement('div'); num.className = 'page-num'; num.textContent = String(i+1);
-  page.appendChild(num);
-  bookEl.appendChild(page);
-
-  const h1 = content.querySelector('h1');                 // chapter starts -> jump menu
-  if (h1) chapters.push({ title: h1.textContent.trim(), abs: i+1 });
-});
-
-addCover('page--back', `
-  <div class="cover-emoji">🧠</div>
-  <p>끝까지 읽어주셔서 감사합니다.</p>
-  <div class="cover-foot">github.com/slowww-ai/second-brain</div>`);
-
-// 4) Render mermaid now, while pages have a real width
 mermaid.initialize({ startOnLoad:false, securityLevel:'loose', theme:'neutral' });
-try { await mermaid.run({ querySelector:'#book .mermaid' }); } catch(e){ console.error('mermaid', e); }
+try { await mermaid.run({ querySelector:'.mermaid' }); } catch(e){ console.error('mermaid', e); }
 
-// 5) Turn it into a flipbook
-const pageFlip = new PageFlip(bookEl, {
-  width: 470, height: 660, size: 'stretch',
-  minWidth: 300, maxWidth: 560, minHeight: 420, maxHeight: 820,
-  maxShadowOpacity: 0.5, showCover: true, usePortrait: true,
-  mobileScrollSupport: true, drawShadow: true, flippingTime: 700,
-  useMouseEvents: true, clickEventForward: ['a','code','pre','svg'], swipeDistance: 30,
-});
-pageFlip.loadFromHTML(bookEl.querySelectorAll('.page'));
-bookEl.classList.remove('loading');
-
-// In-book links (e.g. [다음 장](#chapter-2)) flip to the target page instead of dead-jumping
-const anchorMap = {};
-for (const si in sectionIds) for (const id of sectionIds[si]) anchorMap[id] = Number(si) + 1; // +1 = front cover
-bookEl.addEventListener('click', (e) => {
-  const a = e.target.closest && e.target.closest('a[href^="#"]');
-  if (!a) return;
-  const id = decodeURIComponent(a.getAttribute('href').slice(1));
-  if (anchorMap[id] != null){ e.preventDefault(); pageFlip.flip(anchorMap[id]); }
-});
-
-// 6) Controls: counter, buttons, keyboard, chapter jump
-const total = pageFlip.getPageCount();
-const info = document.getElementById('pageInfo');
-const fmt = () => { info.textContent = (pageFlip.getCurrentPageIndex()+1) + ' / ' + total; };
-fmt();
-
-document.getElementById('prevBtn').onclick = () => pageFlip.flipPrev();
-document.getElementById('nextBtn').onclick = () => pageFlip.flipNext();
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowLeft'  || e.key === 'PageUp')   pageFlip.flipPrev();
-  if (e.key === 'ArrowRight' || e.key === 'PageDown') pageFlip.flipNext();
-});
-
-const sel = document.getElementById('chapterJump');
-sel.innerHTML = '';
-chapters.forEach(ch => {
-  const o = document.createElement('option');
-  o.value = String(ch.abs);
-  o.textContent = ch.title.length > 30 ? ch.title.slice(0,30)+'…' : ch.title;
-  sel.appendChild(o);
-});
-sel.onchange = () => pageFlip.flip(parseInt(sel.value, 10));
-
-pageFlip.on('flip', () => {
-  fmt();
-  const i = pageFlip.getCurrentPageIndex();
-  let best = chapters[0];
-  for (const ch of chapters) if (ch.abs <= i) best = ch;
-  sel.value = String(best.abs);
-});
-
-/* ---- Tap a mermaid diagram to open a zoomable / pannable fullscreen view ---- */
-const zoom = document.createElement('div');
-zoom.id = 'zoomModal';
-zoom.innerHTML =
-  '<div class="zoom-backdrop"></div>' +
-  '<div class="zoom-stage"><div class="zoom-canvas"></div></div>' +
-  '<div class="zoom-hint">스크롤 또는 +/− 로 확대 · 드래그로 이동 · 바깥/Esc 로 닫기</div>' +
-  '<div class="zoom-bar">' +
-    '<button data-z="out" title="축소">−</button>' +
-    '<button data-z="reset" title="원래대로">⤢</button>' +
-    '<button data-z="in" title="확대">+</button>' +
-    '<button data-z="close" title="닫기">✕</button>' +
-  '</div>';
-document.body.appendChild(zoom);
-const zStage = zoom.querySelector('.zoom-stage');
-const zCanvas = zoom.querySelector('.zoom-canvas');
-
-let zsc = 1, ztx = 0, zty = 0, zdrag = false, zmoved = false, zlx = 0, zly = 0, zpinch = 0;
-const zClamp = s => Math.min(Math.max(s, 0.3), 8);
-const zApply = () => { zCanvas.style.transform = 'translate(' + ztx + 'px,' + zty + 'px) scale(' + zsc + ')'; };
-const zReset = () => { zsc = 1; ztx = 0; zty = 0; zApply(); };
-
-function openZoom(svg){
-  const clone = svg.cloneNode(true);
-  clone.removeAttribute('style');     // drop mermaid's inline max-width that keeps it small
-  clone.removeAttribute('width');
-  clone.removeAttribute('height');
-  zCanvas.innerHTML = '';
-  zCanvas.appendChild(clone);
-  zReset();
-  zoom.classList.add('open');
-}
-const closeZoom = () => zoom.classList.remove('open');
-
-// open on tap (capture phase, so the flip engine never treats it as a page turn)
-document.addEventListener('click', (e) => {
-  const m = e.target.closest && e.target.closest('pre.mermaid');
-  if (m){ const svg = m.querySelector('svg'); if (svg){ e.preventDefault(); e.stopPropagation(); openZoom(svg); } }
-}, true);
-['mousedown','touchstart'].forEach(ev => document.addEventListener(ev, (e) => {
-  if (e.target.closest && e.target.closest('pre.mermaid')) e.stopPropagation();  // don't start a flip on a diagram
-}, true));
-
-zoom.querySelector('.zoom-bar').addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b) return;
-  const z = b.dataset.z;
-  if (z === 'in')  { zsc = zClamp(zsc * 1.3); zApply(); }
-  if (z === 'out') { zsc = zClamp(zsc / 1.3); zApply(); }
-  if (z === 'reset') zReset();
-  if (z === 'close') closeZoom();
-});
-zStage.addEventListener('click', (e) => { if (e.target === zStage && !zmoved) closeZoom(); });
-window.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeZoom(); });
-
-zStage.addEventListener('wheel', (e) => {
-  if (!zoom.classList.contains('open')) return;
-  e.preventDefault();
-  zsc = zClamp(zsc * (e.deltaY < 0 ? 1.12 : 1/1.12));
-  zApply();
-}, { passive:false });
-
-zStage.addEventListener('mousedown', (e) => { zdrag = true; zmoved = false; zlx = e.clientX; zly = e.clientY; zStage.classList.add('grabbing'); });
-window.addEventListener('mousemove', (e) => { if (!zdrag) return; zmoved = true; ztx += e.clientX - zlx; zty += e.clientY - zly; zlx = e.clientX; zly = e.clientY; zApply(); });
-window.addEventListener('mouseup', () => { zdrag = false; zStage.classList.remove('grabbing'); });
-
-zStage.addEventListener('touchstart', (e) => { if (e.touches.length === 1){ zdrag = true; zmoved = false; zlx = e.touches[0].clientX; zly = e.touches[0].clientY; } }, { passive:false });
-zStage.addEventListener('touchmove', (e) => {
-  if (e.touches.length === 1 && zdrag){
-    zmoved = true;
-    ztx += e.touches[0].clientX - zlx; zty += e.touches[0].clientY - zly;
-    zlx = e.touches[0].clientX; zly = e.touches[0].clientY; zApply(); e.preventDefault();
-  } else if (e.touches.length === 2){
-    const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-    if (zpinch) { zsc = zClamp(zsc * (d / zpinch)); zApply(); }
-    zpinch = d; e.preventDefault();
-  }
-}, { passive:false });
-zStage.addEventListener('touchend', () => { zdrag = false; zpinch = 0; });
+// Highlight the current section in the sidebar while scrolling
+const links = [...document.querySelectorAll('nav.toc a')];
+const targets = links.map(a => document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const byId = Object.fromEntries(links.map(a => [a.getAttribute('href').slice(1), a]));
+const obs = new IntersectionObserver((entries)=>{
+  entries.forEach(en=>{
+    if(en.isIntersecting){
+      links.forEach(l=>l.classList.remove('active'));
+      const a = byId[en.target.id]; if(a) a.classList.add('active');
+    }
+  });
+}, { rootMargin:'0px 0px -75% 0px', threshold:0 });
+targets.forEach(t=>obs.observe(t));
 </script>
 </body>
 </html>
