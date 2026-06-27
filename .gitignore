@@ -7,7 +7,17 @@ __pycache__/
 .venv/
 .claude/settings.local.json
 
-# Generated market captures (personal/third-party data; regenerate with /collect)
-wiki/raw/*-news.md
-wiki/raw/*-series.md
-wiki/raw/*-price-moves.md
+# Obsidian per-user session state (leaks which notes you have open) — local only.
+.obsidian/workspace*.json
+.obsidian/graph.json
+
+# Personal wiki content stays local — the repo shares only code + scaffolding.
+# Everything you actually write/capture in wiki/ is git-ignored; the empty
+# folder structure is kept via .gitkeep. (To share a specific note as a demo,
+# add an explicit `!wiki/notes/<name>.md` un-ignore line below.)
+wiki/raw/*
+wiki/notes/*
+wiki/outputs/*
+!wiki/raw/.gitkeep
+!wiki/notes/.gitkeep
+!wiki/outputs/.gitkeep

@@ -26,6 +26,9 @@ LANCE_DIR = ROOT / "wiki" / "lancedb"
 DB = ROOT / "wiki" / "index.db"
 MODEL = "gemini-embedding-2-preview"
 
+# Kinds that count as dated market observations for the window engine.
+MARKET_KINDS = {"news", "price-move", "commodity", "macro", "earnings"}
+
 
 def embed_query(q: str) -> list[float]:
     try:
@@ -125,6 +128,10 @@ def window(anchor: str, days: int = 30, ticker: str = "") -> None:
         if nid == anchor_id:
             continue
         tset = {t for t in (tickers or "").split(",") if t}
+        # Skip non-market prose (no tickers and not a market kind), e.g. example
+        # notes that merely happen to fall in the date range.
+        if not tset and (kind or "") not in MARKET_KINDS:
+            continue
         if ticker and ticker.upper() not in tset:
             continue
         shared = anchor_tickers & tset

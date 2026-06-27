@@ -104,11 +104,11 @@ def watchlist_names() -> dict[str, str]:
 
 
 def entity_stub(ticker: str, name: str) -> str:
-    today = datetime.date.today().isoformat()
+    # No `date:` — hubs are timeless, so they must NOT land in the temporal
+    # window. Dated event notes carry the dates; hubs accumulate them as backlinks.
     return (
         f"---\n"
         f"id: {ticker.lower()}\n"
-        f"date: {today}\n"
         f"source: stub\n"
         f"tags: [entity]\n"
         f"ticker: {ticker}\n"

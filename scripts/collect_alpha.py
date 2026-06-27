@@ -63,6 +63,18 @@ SERIES = [
     {"hub": "ust2y",  "label": "US 2Y yield (%)",     "kind": "macro",     "type": "treasury", "maturity": "2year"},
 ]
 
+# Dates/timestamps are anchored to Korea time (KST) so a daily run with no date
+# argument collects "today" by the Korean calendar, regardless of machine TZ.
+KST = datetime.timezone(datetime.timedelta(hours=9))
+
+
+def today_kst() -> str:
+    return datetime.datetime.now(KST).date().isoformat()
+
+
+def now_kst() -> datetime.datetime:
+    return datetime.datetime.now(KST)
+
 
 # --------------------------------------------------------------------------- #
 # config / env
@@ -193,7 +205,9 @@ def fetch_news(key: str, ticker: str, time_from: str, time_to: str, limit: int) 
     params = {
         "function": "NEWS_SENTIMENT",
         "tickers": ticker,
-        "sort": "EARLIEST",
+        # RELEVANCE so a busy ticker's top stories spread across the whole
+        # window instead of clustering at one end (EARLIEST/LATEST do that).
+        "sort": "RELEVANCE",
         "limit": str(limit),
         "apikey": key,
     }
@@ -209,10 +223,10 @@ def fetch_news(key: str, ticker: str, time_from: str, time_to: str, limit: int) 
 def write_news_capture(
     ticker: str, name: str, articles: list[dict], time_from: str, time_to: str
 ) -> pathlib.Path:
-    today = datetime.date.today().isoformat()
+    today = today_kst()
     path = RAW / f"{today}-{ticker.lower()}-news.md"
     if path.exists():  # raw/ is append-only — never overwrite a prior capture
-        stamp = datetime.datetime.now().strftime("%H%M%S")
+        stamp = now_kst().strftime("%H%M%S")
         path = RAW / f"{today}-{ticker.lower()}-news-{stamp}.md"
 
     span = time_from or "(latest)"
@@ -271,10 +285,10 @@ def cmd_news(args: argparse.Namespace) -> None:
     else:
         targets = load_watchlist()
 
-    # Default to the trailing week so a bare `news` run grabs recent activity.
+    # No date given → today (Korea date), so a daily run collects today's news.
     time_from = args.date_from
     if not time_from and not args.date_to:
-        time_from = (datetime.date.today() - datetime.timedelta(days=7)).isoformat()
+        time_from = today_kst()
     time_to = args.date_to
 
     con = db()
@@ -287,11 +301,14 @@ def cmd_news(args: argparse.Namespace) -> None:
         except (RuntimeError, urllib.error.URLError) as e:
             print(f"  {ticker}: skipped ({e})")
             continue
-        # Keep only articles genuinely about this ticker, newest-relevant first.
+        # Keep only articles genuinely about this ticker.
         kept = [a for a in feed if ticker_relevance(a, ticker) >= args.min_relevance]
         kept = filter_unseen(con, kept)
-        kept.sort(key=lambda a: a.get("time_published", ""))
+        # Take the most relevant `limit`, THEN order by date — so the capture
+        # spans the window instead of clustering at its earliest day.
+        kept.sort(key=lambda a: ticker_relevance(a, ticker), reverse=True)
         kept = kept[: args.limit]
+        kept.sort(key=lambda a: a.get("time_published", ""))
         if not kept:
             print(f"  {ticker}: no new articles")
             continue
@@ -313,8 +330,8 @@ def cmd_prices(args: argparse.Namespace) -> None:
     else:
         targets = load_watchlist()
 
-    date_from = args.date_from or (datetime.date.today() - datetime.timedelta(days=30)).isoformat()
-    date_to = args.date_to or datetime.date.today().isoformat()
+    date_from = args.date_from or (now_kst().date() - datetime.timedelta(days=30)).isoformat()
+    date_to = args.date_to or today_kst()
 
     for i, (ticker, name) in enumerate(targets):
         if i:
@@ -358,10 +375,10 @@ def _f(x) -> float:
 
 
 def _write_price_capture(ticker, name, moves, threshold) -> pathlib.Path:
-    today = datetime.date.today().isoformat()
+    today = today_kst()
     path = RAW / f"{today}-{ticker.lower()}-price-moves.md"
     if path.exists():
-        stamp = datetime.datetime.now().strftime("%H%M%S")
+        stamp = now_kst().strftime("%H%M%S")
         path = RAW / f"{today}-{ticker.lower()}-price-moves-{stamp}.md"
     lines = [
         "---",
@@ -427,8 +444,8 @@ def cmd_series(args: argparse.Namespace) -> None:
         if not specs:
             sys.exit(f"unknown series hub '{args.hub}'. Known: {', '.join(s['hub'] for s in SERIES)}")
 
-    date_from = args.date_from or (datetime.date.today() - datetime.timedelta(days=30)).isoformat()
-    date_to = args.date_to or datetime.date.today().isoformat()
+    date_from = args.date_from or (now_kst().date() - datetime.timedelta(days=30)).isoformat()
+    date_to = args.date_to or today_kst()
 
     for i, spec in enumerate(specs):
         if i:
@@ -463,11 +480,11 @@ def cmd_series(args: argparse.Namespace) -> None:
 
 
 def _write_series_capture(spec, moves, date_from, date_to) -> pathlib.Path:
-    today = datetime.date.today().isoformat()
+    today = today_kst()
     hub = spec["hub"]
     path = RAW / f"{today}-{hub}-series.md"
     if path.exists():
-        stamp = datetime.datetime.now().strftime("%H%M%S")
+        stamp = now_kst().strftime("%H%M%S")
         path = RAW / f"{today}-{hub}-series-{stamp}.md"
     lines = [
         "---",

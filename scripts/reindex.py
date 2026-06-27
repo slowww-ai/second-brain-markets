@@ -1,26 +1,19 @@
 """Rebuild the wiki index from wiki/notes/.
 
-Vector store: LanceDB at wiki/lancedb/ (table `notes`).
-Metadata:     SQLite at wiki/index.db (tables `links`, `ingested`).
+Two outputs, decoupled so the connection layer never depends on an API key:
 
-Embeddings come from Gemini `gemini-embedding-2-preview` via google-genai.
-Requires GEMINI_API_KEY in the environment.
+  1. **Graph + temporal index** (SQLite at wiki/index.db): `links` (wikilink
+     edges) and `note_meta` (per-note mtime, plus date/kind/tickers for the
+     stock/connection layer). Pure stdlib — always runs, no key needed.
+  2. **Embeddings** (LanceDB at wiki/lancedb/): Gemini vectors for semantic
+     search. Only runs when GEMINI_API_KEY is set and google-genai/lancedb are
+     installed; otherwise it's skipped with a notice (semantic /ask is then
+     disabled, but /connect and --window keep working).
 
 Incremental: only re-embeds notes whose mtime changed since the last run.
 """
 from __future__ import annotations
-import os, re, sqlite3, pathlib, sys, datetime
-
-try:
-    from google import genai
-except ImportError:
-    sys.exit("google-genai not installed. Run: pip install google-genai")
-
-try:
-    import lancedb
-    import pyarrow as pa
-except ImportError:
-    sys.exit("lancedb not installed. Run: pip install lancedb pyarrow")
+import os, re, sqlite3, pathlib, sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 NOTES = ROOT / "wiki" / "notes"
@@ -52,7 +45,6 @@ def extract_meta(fm: str) -> dict:
     ts = TICKER_RE.search(fm)
     if ts:
         tickers.append(ts.group(1).strip().strip("'\"").upper())
-    # de-dup, preserve order
     seen, uniq = set(), []
     for t in tickers:
         if t and t not in seen:
@@ -94,7 +86,6 @@ def ensure_sqlite(con: sqlite3.Connection) -> None:
         );
         CREATE INDEX IF NOT EXISTS idx_note_meta_date ON note_meta(date);
     """)
-    # Migrate older note_meta tables (which only had id, mtime).
     have = {row[1] for row in con.execute("PRAGMA table_info(note_meta)")}
     for col in ("date", "kind", "tickers"):
         if col not in have:
@@ -107,6 +98,7 @@ def embed(client, text: str) -> list[float]:
 
 
 def open_lance_table(db, dim: int):
+    import pyarrow as pa
     if "notes" in db.table_names():
         return db.open_table("notes")
     schema = pa.schema([
@@ -118,29 +110,40 @@ def open_lance_table(db, dim: int):
     return db.create_table("notes", schema=schema)
 
 
+def get_embedder():
+    """Return (client, lancedb_module) if embeddings are possible, else (None, None)."""
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        print("reindex: GEMINI_API_KEY not set — building links + temporal index only "
+              "(/connect and --window work; semantic /ask disabled).")
+        return None, None
+    try:
+        from google import genai
+        import lancedb
+    except ImportError:
+        print("reindex: google-genai/lancedb not installed — building links + temporal "
+              "index only. Install them (and set up .venv) to enable semantic search.")
+        return None, None
+    return genai.Client(api_key=key), lancedb
+
+
 def main() -> None:
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        sys.exit("GEMINI_API_KEY not set")
-    client = genai.Client(api_key=api_key)
-
-    LANCE_DIR.parent.mkdir(parents=True, exist_ok=True)
-    lance = lancedb.connect(str(LANCE_DIR))
-
     con = sqlite3.connect(DB)
     ensure_sqlite(con)
     cur = con.cursor()
 
-    # Skip rows whose embedding never completed (mtime NULL) so they re-embed.
+    client, lancedb = get_embedder()
+    embed_ok = client is not None
+
     existing: dict[str, float] = {
         row[0]: row[1] for row in cur.execute("SELECT id, mtime FROM note_meta")
         if row[1] is not None
     }
+    existing_ids = {row[0] for row in cur.execute("SELECT id FROM note_meta")}
     seen: set[str] = set()
     to_upsert: list[dict] = []
 
-    # Rebuild links from scratch each run.
-    cur.execute("DELETE FROM links")
+    cur.execute("DELETE FROM links")  # rebuilt from scratch each run
 
     for p in NOTES.glob("*.md"):
         note_id = p.stem
@@ -150,8 +153,7 @@ def main() -> None:
         for dst in links:
             cur.execute("INSERT INTO links(src, dst) VALUES (?, ?)", (note_id, dst))
 
-        # Metadata is cheap (no API call) — sync date/kind/tickers every run for
-        # every note, without disturbing the embed-gating mtime.
+        # Cheap metadata sync (no API): every note, every run.
         cur.execute(
             "INSERT INTO note_meta(id, date, kind, tickers) VALUES(?,?,?,?) "
             "ON CONFLICT(id) DO UPDATE SET date=excluded.date, kind=excluded.kind, "
@@ -159,23 +161,18 @@ def main() -> None:
             (note_id, meta["date"], meta["kind"], meta["tickers"]),
         )
 
+        if not embed_ok:
+            continue
         if note_id in existing and abs(existing[note_id] - mtime) < 1e-6:
             continue
-
         vec = embed(client, body[:8000])
-        to_upsert.append({
-            "id": note_id,
-            "body": body,
-            "tags": " ".join(tags),
-            "vector": vec,
-        })
+        to_upsert.append({"id": note_id, "body": body, "tags": " ".join(tags), "vector": vec})
 
-    # Upsert into LanceDB. First-run creates the table with the right dim.
-    if to_upsert:
+    if embed_ok and to_upsert:
+        lance = lancedb.connect(str(LANCE_DIR))
         dim = len(to_upsert[0]["vector"])
         table = open_lance_table(lance, dim)
         ids = [r["id"] for r in to_upsert]
-        # Delete existing rows for these ids, then add fresh.
         in_list = ", ".join(f"'{i}'" for i in ids)
         try:
             table.delete(f"id IN ({in_list})")
@@ -183,25 +180,25 @@ def main() -> None:
             pass
         table.add(to_upsert)
         for r in to_upsert:
-            # Row already exists from the metadata sync above; only stamp mtime
-            # now that the embedding succeeded (so a failed embed re-runs).
             cur.execute(
                 "UPDATE note_meta SET mtime=? WHERE id=?",
                 (NOTES.joinpath(r["id"] + ".md").stat().st_mtime, r["id"]),
             )
 
-    # Remove notes that were deleted from disk.
-    deleted_ids = [i for i in existing if i not in seen]
-    if deleted_ids and "notes" in lance.table_names():
-        table = lance.open_table("notes")
-        in_list = ", ".join(f"'{i}'" for i in deleted_ids)
-        table.delete(f"id IN ({in_list})")
+    # Remove notes deleted from disk (note_meta always; LanceDB if embedding).
+    deleted_ids = [i for i in existing_ids if i not in seen]
+    if embed_ok and deleted_ids:
+        lance = lancedb.connect(str(LANCE_DIR))
+        if "notes" in lance.table_names():
+            in_list = ", ".join(f"'{i}'" for i in deleted_ids)
+            lance.open_table("notes").delete(f"id IN ({in_list})")
     for old_id in deleted_ids:
         cur.execute("DELETE FROM note_meta WHERE id=?", (old_id,))
 
     con.commit()
     con.close()
-    print(f"reindex: upserted {len(to_upsert)}, deleted {len(deleted_ids)}")
+    mode = f"embedded {len(to_upsert)}" if embed_ok else "metadata-only (no embeddings)"
+    print(f"reindex: {mode}, deleted {len(deleted_ids)}, indexed {len(seen)} notes")
 
 
 if __name__ == "__main__":
