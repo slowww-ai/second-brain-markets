@@ -32,4 +32,38 @@ Steps:
    where the second argument is a comma-separated list of note IDs (filenames without `.md`) produced or updated from that raw file. This is how the ledger tracks what's been ingested — without it, the file will show up as "new" on every run.
 7. At the end, print a short summary: how many raw files processed, how many notes created, how many notes updated, and which decisions you're least sure about so the user can correct you.
 
+## Stock captures (event notes ↔ entity hubs)
+
+Raw files from `/collect` have `source: alphavantage:...` and `kind: news-batch`,
+`price-move-batch`, `commodity-batch`, or `macro-batch`. They are the
+**time-relative** layer. Distill them differently from prose:
+
+- **One atomic event note per notable item** (a significant article, a notable
+  price move) — not one note per batch. Skip low-signal duplicates and pure
+  noise; the goal is connections worth exploring, not a firehose.
+- **Date each event note by the item's own date** (the article's `published`
+  date, the move's date) — *not* the collection date. The temporal window
+  depends on this being right.
+- **Frontmatter** for each event note:
+  ```yaml
+  ---
+  id: 2026-06-25-msft-ai-copilot-enterprise-deal
+  date: 2026-06-25
+  source: alphavantage:NEWS_SENTIMENT
+  tags: [event, news, cloud, ai]
+  tickers: [MSFT, NVDA]      # every ticker the item is genuinely about
+  kind: news                 # news | price-move | earnings | macro
+  sentiment: 0.21            # for news, the overall_sentiment_score
+  status: stable
+  ---
+  ```
+- **Link to entity hubs by ticker.** For every ticker in `tickers`, add a
+  `[[<ticker-lower>]]` link in the body (e.g. `[[msft]]`, `[[nvda]]`). If a hub
+  note doesn't exist yet, run `python scripts/ingest.py ensure-entities <TICKER>`
+  to create a stub — never leave the link dangling. Co-mentioned tickers are
+  what bridge two companies, so preserve them.
+- **Don't pre-wire relationships here.** Ingest just creates well-linked,
+  well-dated event notes. Discovering and recording relationships among them is
+  `/connect`'s job.
+
 Remember: small, focused notes are better than big ones. Split when in doubt.

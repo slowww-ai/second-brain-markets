@@ -17,7 +17,7 @@ A personal wiki built from raw captured markdown. Claude Code helps ingest, link
 
 ## Storage split
 
-The index is deliberately split across two stores. Vectors live in **LanceDB** (`wiki/lancedb/`) for on-disk ANN search without loading every embedding into memory. Graph and ledger metadata lives in **SQLite** (`wiki/index.db`): `links` (wikilink edges, rebuilt every reindex), `ingested` (raw-file ledger keyed by filename, with content hash + produced notes), and `note_meta` (per-note mtime for incremental reindex). When changing the schema in one store, check whether the other needs a matching change.
+The index is deliberately split across two stores. Vectors live in **LanceDB** (`wiki/lancedb/`) for on-disk ANN search without loading every embedding into memory. Graph and ledger metadata lives in **SQLite** (`wiki/index.db`): `links` (wikilink edges, rebuilt every reindex), `ingested` (raw-file ledger keyed by filename, with content hash + produced notes), and `note_meta` (per-note mtime for incremental reindex, plus `date`/`kind`/`tickers` for the stock layer's temporal queries). When changing the schema in one store, check whether the other needs a matching change.
 
 ## Embeddings & search
 
@@ -30,6 +30,58 @@ set -a; source .env; set +a
 python scripts/reindex.py
 ```
 
+## Stock layer
+
+The wiki doubles as a stock-relationship graph. The whole idea is to gather
+interconnected things and discover their relationships over time — so the graph
+gains a **time spine** without changing the core notes/links/embeddings model.
+
+**Two layers of notes, joined by ticker.** The ticker is the foreign key.
+
+| Layer | What | Source | Frontmatter |
+|---|---|---|---|
+| **Hub** (timeless) | A profile that rarely changes. **Entity hub** = a company/asset (filename = lowercase ticker, `notes/msft.md`, `notes/gld.md`). **Theme hub** = a concept ("AI capex", "rate cycle"). **Macro hub** = a series (`notes/ust10y.md`). One per thing. | `/jina-capture`, hand-written | `kind: entity\|theme\|macro`, `ticker:` (entities/macros) |
+| **Event leaf** (time-relative) | A dated observation — a news item, a notable price/yield move, earnings. Atomic, one per item. | `/collect` (Alpha Vantage) | `kind: news\|price-move\|macro\|commodity\|earnings`, `date:`, `tickers: [..]`, `sentiment:` |
+
+An event leaf links to its hub(s) by ticker (`[[msft]]`), so each hub accumulates
+a **timeline** in its backlinks, and a co-mentioned event (`tickers: [MSFT, NVDA]`)
+bridges two hubs — revealing a relationship whose *meaning* the hub notes explain.
+
+**Hubs generalize beyond tickers.** Not everything is a company. A `/jina-capture`
+of a macro thesis becomes a **theme hub** (`kind: theme`); tickers and events link
+to it, and its backlinks become your evidence file for that thesis. Anything you
+capture connects through the same two mechanisms — explicit `[[wikilinks]]` (added
+at ingest) and semantic embeddings (LanceDB) — so arbitrary captures are never a
+silo. Assets **not on Alpha Vantage** (e.g. Korea-listed LS Electric) live as
+hubs too; gather their news via `/jina-capture` instead of `/collect`.
+
+**New frontmatter fields** (all additive — notes that omit them are unaffected):
+`tickers` / `ticker`, `kind`, `sentiment`. `date` was always there but is now
+indexed and treated as first-class.
+
+**Pieces:**
+
+- `scripts/collect_alpha.py` — stdlib-only Alpha Vantage collector. Subcommands:
+  `news` (NEWS_SENTIMENT), `prices` (notable equity moves via TIME_SERIES_DAILY),
+  and `series` (non-news macro/commodity values → dated events: gold/silver via
+  GOLD_SILVER_HISTORY, oil via WTI, 10y/2y yields via TREASURY_YIELD; configured
+  in the `SERIES` list in the script, linked to the `gld`/`slv`/`uso`/`ust10y`/`ust2y`
+  hubs). Reads `watchlist.txt`, writes dated captures to `wiki/raw/`, dedups news
+  by URL via the `av_seen` table in `index.db`. Needs `ALPHAVANTAGE_API_KEY`
+  (free tier: 25 calls/day, 5/min — one news call per ticker covers a date range).
+- `watchlist.txt` (project root) — symbols to track, one `TICKER, Name` per line.
+  Use US-listed tickers / ETF proxies (gold→GLD, Nasdaq→QQQ, oil→USO, VIX→VIXY).
+- `scripts/ingest.py ensure-entities [T1,T2]` — creates stub entity hubs for
+  tickers missing one (defaults to the whole watchlist).
+- `scripts/search.py --window <anchor> [--days 30] [--ticker T]` — the
+  "connect within a month" engine. Anchor = date / `YYYY-MM` / note-id. Returns
+  dated notes in the window ranked by ticker overlap. SQLite only, no API key.
+- `/collect`, `/connect` — the capture and relationship-discovery commands.
+
+**The loop:** `/jina-capture` company overviews → entity hubs · `/collect` →
+dated event captures · `/ingest` → atomic event notes linked to hubs ·
+`/connect` → confirm relationships within a month, one at a time.
+
 ## Slash commands
 
 The workflow is driven by skill-backed slash commands:
@@ -37,6 +89,8 @@ The workflow is driven by skill-backed slash commands:
 | Command | Purpose |
 |---|---|
 | `/jina-capture <url>` | Fetch a URL via `r.jina.ai` and save it to `wiki/raw/` as a stamped markdown file. |
+| `/collect [ticker] [from..to]` | Pull dated stock news/sentiment (plus optional price moves and macro/commodity series) from Alpha Vantage for the watchlist into `wiki/raw/`. See **Stock layer** below. |
+| `/connect <ticker month \| date \| note-id>` | Surface and confirm relationships among dated stock notes within a ±1-month window. The relationship-discovery loop. |
 | `/ingest` | Distill new files in `wiki/raw/` into `wiki/notes/`, update the ledger, and reindex. |
 | `/ask <question>` | Search `wiki/notes/` semantically and answer in chat, citing notes with `[[wikilinks]]`. No file output. |
 | `/brief <topic>` | Gather relevant notes via semantic search and write a brief into `wiki/outputs/`. Default format is markdown; HTML, docx, and pdf are supported on request. |

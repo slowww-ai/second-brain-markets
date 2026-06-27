@@ -31,6 +31,37 @@ MODEL = "gemini-embedding-2-preview"
 FM_RE = re.compile(r"^---\n(.*?)\n---\n", re.DOTALL)
 LINK_RE = re.compile(r"\[\[([^\]]+)\]\]")
 TAG_RE = re.compile(r"tags:\s*\[(.*?)\]")
+DATE_RE = re.compile(r"^date:\s*(.+)$", re.M)
+KIND_RE = re.compile(r"^kind:\s*(.+)$", re.M)
+TICKERS_RE = re.compile(r"^tickers:\s*\[(.*?)\]", re.M)
+TICKER_RE = re.compile(r"^ticker:\s*(.+)$", re.M)
+
+
+def extract_meta(fm: str) -> dict:
+    """Pull the temporal/stock dimensions out of the frontmatter.
+
+    Additive: notes without these fields just yield empty values, so the rest
+    of the wiki (which never set them) keeps working unchanged.
+    """
+    date_m = DATE_RE.search(fm)
+    kind_m = KIND_RE.search(fm)
+    tickers: list[str] = []
+    tl = TICKERS_RE.search(fm)
+    if tl:
+        tickers += [t.strip().strip("'\"").upper() for t in tl.group(1).split(",") if t.strip()]
+    ts = TICKER_RE.search(fm)
+    if ts:
+        tickers.append(ts.group(1).strip().strip("'\"").upper())
+    # de-dup, preserve order
+    seen, uniq = set(), []
+    for t in tickers:
+        if t and t not in seen:
+            seen.add(t); uniq.append(t)
+    return {
+        "date": date_m.group(1).strip().strip("'\"") if date_m else "",
+        "kind": kind_m.group(1).strip().strip("'\"") if kind_m else "",
+        "tickers": ",".join(uniq),
+    }
 
 
 def parse(path: pathlib.Path):
@@ -41,7 +72,7 @@ def parse(path: pathlib.Path):
     tags_m = TAG_RE.search(fm)
     tags = [t.strip().strip("'\"") for t in (tags_m.group(1).split(",") if tags_m else []) if t.strip()]
     links = LINK_RE.findall(body)
-    return body, tags, links
+    return body, tags, links, extract_meta(fm)
 
 
 def ensure_sqlite(con: sqlite3.Connection) -> None:
@@ -56,9 +87,18 @@ def ensure_sqlite(con: sqlite3.Connection) -> None:
         );
         CREATE TABLE IF NOT EXISTS note_meta (
             id TEXT PRIMARY KEY,
-            mtime REAL
+            mtime REAL,
+            date TEXT,
+            kind TEXT,
+            tickers TEXT
         );
+        CREATE INDEX IF NOT EXISTS idx_note_meta_date ON note_meta(date);
     """)
+    # Migrate older note_meta tables (which only had id, mtime).
+    have = {row[1] for row in con.execute("PRAGMA table_info(note_meta)")}
+    for col in ("date", "kind", "tickers"):
+        if col not in have:
+            con.execute(f"ALTER TABLE note_meta ADD COLUMN {col} TEXT")
 
 
 def embed(client, text: str) -> list[float]:
@@ -91,8 +131,10 @@ def main() -> None:
     ensure_sqlite(con)
     cur = con.cursor()
 
+    # Skip rows whose embedding never completed (mtime NULL) so they re-embed.
     existing: dict[str, float] = {
         row[0]: row[1] for row in cur.execute("SELECT id, mtime FROM note_meta")
+        if row[1] is not None
     }
     seen: set[str] = set()
     to_upsert: list[dict] = []
@@ -104,9 +146,18 @@ def main() -> None:
         note_id = p.stem
         seen.add(note_id)
         mtime = p.stat().st_mtime
-        body, tags, links = parse(p)
+        body, tags, links, meta = parse(p)
         for dst in links:
             cur.execute("INSERT INTO links(src, dst) VALUES (?, ?)", (note_id, dst))
+
+        # Metadata is cheap (no API call) — sync date/kind/tickers every run for
+        # every note, without disturbing the embed-gating mtime.
+        cur.execute(
+            "INSERT INTO note_meta(id, date, kind, tickers) VALUES(?,?,?,?) "
+            "ON CONFLICT(id) DO UPDATE SET date=excluded.date, kind=excluded.kind, "
+            "tickers=excluded.tickers",
+            (note_id, meta["date"], meta["kind"], meta["tickers"]),
+        )
 
         if note_id in existing and abs(existing[note_id] - mtime) < 1e-6:
             continue
@@ -132,9 +183,11 @@ def main() -> None:
             pass
         table.add(to_upsert)
         for r in to_upsert:
+            # Row already exists from the metadata sync above; only stamp mtime
+            # now that the embedding succeeded (so a failed embed re-runs).
             cur.execute(
-                "INSERT OR REPLACE INTO note_meta(id, mtime) VALUES (?, ?)",
-                (r["id"], NOTES.joinpath(r["id"] + ".md").stat().st_mtime),
+                "UPDATE note_meta SET mtime=? WHERE id=?",
+                (NOTES.joinpath(r["id"] + ".md").stat().st_mtime, r["id"]),
             )
 
     # Remove notes that were deleted from disk.

@@ -6,3 +6,8 @@ __pycache__/
 .DS_Store
 .venv/
 .claude/settings.local.json
+
+# Generated market captures (personal/third-party data; regenerate with /collect)
+wiki/raw/*-news.md
+wiki/raw/*-series.md
+wiki/raw/*-price-moves.md

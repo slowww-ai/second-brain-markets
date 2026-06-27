@@ -1,8 +1,17 @@
-# 🧠 Second Brain
+# 🧠📈 second-brain-markets
 
 <p align="center">
   <img src="docs/second-brain-hero.png" alt="Box-headed gleaners gathering scattered handwritten notes from a golden field — capturing raw material and distilling it into a personal wiki" width="760">
 </p>
+
+> **이 저장소는 [slowww-ai/second-brain](https://github.com/slowww-ai/second-brain)의 변형(variant)입니다.**
+> 똑같은 *모으기 → 정리 → 연결* 위키 위에, **마켓 레이어**를 얹었습니다: 종목·원자재·거시지표를
+> **날짜별로** 수집하고, 그것들이 시간 속에서 **어떻게 연결되는지**를 하나씩 발견하게 해줍니다.
+> 핵심은 자동화가 아니라 *연결을 찾아가는 재미*입니다.
+>
+> _A variant of [slowww-ai/second-brain](https://github.com/slowww-ai/second-brain): the same
+> capture→distill→link wiki, extended with a **markets layer** that tracks tickers, commodities,
+> and macro series by date and helps you discover how they connect over time._
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
@@ -16,6 +25,84 @@
 > A personal wiki: dump your raw notes, articles, and thoughts in one place, and [Claude Code](https://claude.com/claude-code) distills, links, searches, and summarizes them for you.
 
 **언어 / Language:** [🇰🇷 한국어](#-한국어) · [🇺🇸 English](#-english)
+
+---
+
+## 📈 마켓 레이어 — 노트가 어떻게 연결되는가 (이 변형의 핵심)
+
+> 아래는 이 변형이 더한 부분입니다. 바탕이 되는 *모으기·정리·검색* 위키 자체의 설명은 그 아래 [한국어](#-한국어)·[English](#-english) 섹션에 그대로 있습니다.
+
+### 1) 두 층의 노트 — 티커가 둘을 잇는 못
+
+모든 노트는 둘 중 하나이고, **`ticker`가 외래키(foreign key)** 입니다.
+
+| 층 | 무엇 | 시간성 | 출처 | frontmatter |
+|---|---|---|---|---|
+| **허브(Hub)** | 한 종목/자산(`notes/msft.md`), 또는 테마(`kind: theme`), 또는 거시 시리즈(`notes/ust10y.md`)의 **변하지 않는 프로필** | timeless | `/jina-capture` · 직접 작성 | `kind: entity\|theme\|macro`, `ticker:` |
+| **이벤트(Event leaf)** | 특정 날짜의 관찰 하나 — 뉴스, 가격·금리 급변, 실적. **원자 단위** | dated | `/collect` (Alpha Vantage) | `kind: news\|price-move\|commodity\|macro`, `date:`, `tickers: [..]`, `sentiment:` |
+
+이벤트 노트는 `tickers`에 적힌 모든 심볼의 허브로 `[[msft]]`처럼 링크됩니다. 그래서:
+
+- **허브의 backlinks = 그 자산의 타임라인.** `msft.md`를 열면 MSFT 관련 모든 이벤트가 시간순으로 쌓입니다.
+- **공동 언급 = 간선(edge).** 한 뉴스가 `tickers: [MSFT, NVDA]`면 두 허브를 잇고 → 그 뉴스가 곧 두 회사의 연결고리. *왜* 연결됐는지는 허브 노트(비즈니스 모델·공급망)가 설명합니다.
+
+```
+허브(timeless)   MSFT        GLD        UST10Y      ← 종목/자산/거시마다 메인 노트 1개
+                  ▲           ▲           ▲
+                  │  [[msft]] │           │
+이벤트(dated)  [Azure GPU 증설 뉴스]   [Fed 금리 뉴스: 금↑·10년물↑]   ← 뉴스가 연결고리
+                tickers:[MSFT,NVDA]      tickers:[GLD,UST10Y]
+```
+
+### 2) 연결이 생기는 3가지 메커니즘
+
+1. **명시적 링크 `[[wikilinks]]`** — `/ingest`가 새 노트를 관련 허브·테마·기존 노트로 연결. SQLite `links(src,dst)` 그래프로 저장 → Obsidian 그래프뷰에서 그대로 보임.
+2. **의미 임베딩 (LanceDB)** — 모든 노트가 Gemini 임베딩으로 색인. 명시적 링크가 없어도 `/ask`·`/connect`가 숨은 연결을 찾음. *(아무 `/jina-capture` 캡처도 자동으로 그래프에 녹는 이유.)*
+3. **시간 윈도 (±한 달)** — `date`가 `note_meta`에 색인되어, 한 자산의 사건과 그 전후 한 달의 다른 사건을 **연결 후보**로 묶음. 이게 "한 달 이내 연결" 엔진.
+
+### 3) 내부 저장 구조
+
+- `wiki/notes/*.md` — 노트 본문(허브+이벤트). 사람이 읽고 고치는 단일 출처.
+- `wiki/index.db` (SQLite) — `links`(위키링크 그래프), `note_meta`(노트별 `mtime`·**`date`·`kind`·`tickers`**), `ingested`(처리 장부), `av_seen`(뉴스 URL 중복 방지).
+- `wiki/lancedb/` — 의미 검색용 벡터.
+- `reindex.py`가 노트 저장 시 자동(훅)으로 위 색인을 갱신.
+
+### 4) 사용법
+
+**0. 준비** — `.env`에 키 두 개, 그리고 venv:
+```bash
+echo "GEMINI_API_KEY=..."        >> .env   # 의미 검색·색인
+echo "ALPHAVANTAGE_API_KEY=..."  >> .env   # 마켓 수집 (무료: alphavantage.co/support/#api-key)
+python3.13 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt
+```
+
+**1. 추적할 심볼 정하기** — `watchlist.txt` 편집(한 줄에 `TICKER, 이름`). 미국 상장 심볼/ETF 프록시 사용:
+
+| 추적하고 싶은 것 | 심볼 | 비고 |
+|---|---|---|
+| 개별주 | MSFT, GOOGL, TSLA, PLTR | 그대로 |
+| 나스닥 / S&P500 | QQQ / SPY | ETF 프록시 |
+| 금 / 은 / 원유 | GLD / SLV / USO | ETF 프록시(뉴스○) + `series`로 실제 가격 |
+| VIX(변동성) | VIXY | VIX 선물 ETF |
+| 10년·2년 국채금리 | ust10y · ust2y | 뉴스 없음 → `series`(TREASURY_YIELD)로만 |
+| 한국 종목(예: LS일렉트릭) | — | Alpha Vantage 불가 → `/jina-capture`로 수집 |
+
+**2. 명령 흐름:**
+```
+/collect                 # watchlist 뉴스를 wiki/raw/로 (종목 지정: /collect MSFT)
+/ingest                  # raw → 원자 이벤트 노트, 허브에 자동 [[링크]]
+/connect MSFT 2026-06    # ±한 달 이웃을 모아 연결 후보 제안 → 확정하면 [[링크]]+이유 기록
+/jina-capture <회사/테마 url>   # 시간 무관 정보 → 허브/테마 노트 (그 뒤 /ingest)
+```
+
+| 명령 | 하는 일 |
+|---|---|
+| `/collect [티커] [from..to]` | Alpha Vantage 뉴스(+`prices` 급변동, +`series` 금·은·유가·금리)를 날짜별로 `wiki/raw/`에 수집 |
+| `/connect <티커 월 \| 날짜 \| 노트id>` | ±한 달 윈도의 연결 후보를 제안하고, 확정한 것만 그래프에 기록 (관계 발견 루프) |
+| `/ingest` | raw를 원자 노트로 정리·연결하고 색인 갱신 |
+| `/jina-capture <url>` | 웹페이지를 마크다운으로 `wiki/raw/`에 저장 (허브·테마 채우기) |
+
+> **TL;DR (EN):** Every note is a timeless **hub** (a ticker/asset/theme) or a dated **event** (news, price/yield move). Events link to hubs by `ticker`, so each hub's backlinks are its timeline and any co-mentioned event becomes an edge between hubs. Three forces wire the graph — explicit `[[wikilinks]]`, semantic embeddings, and a ±1-month time window. Use `/collect` → `/ingest` → `/connect`, capture timeless context with `/jina-capture`, and set what you track in `watchlist.txt` (US tickers / ETF proxies; gold→GLD, Nasdaq→QQQ, yields→`series`).
 
 ---
 
@@ -344,5 +431,5 @@ CLAUDE.md    # the conventions Claude follows every session
 ---
 
 <p align="center">
-  <sub>Built by <a href="https://github.com/hooman34">Gieun Kwak</a> · Powered by <a href="https://claude.com/claude-code">Claude Code</a> · Licensed under <a href="LICENSE">MIT</a></sub>
+  <sub>A variant of <a href="https://github.com/slowww-ai/second-brain">slowww-ai/second-brain</a> · Built by <a href="https://github.com/hooman34">Gieun Kwak</a> · Powered by <a href="https://claude.com/claude-code">Claude Code</a> · Licensed under <a href="LICENSE">MIT</a></sub>
 </p>

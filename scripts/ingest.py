@@ -5,17 +5,25 @@ Usage:
     python scripts/ingest.py list-new                   # list raw/ files not yet ingested
     python scripts/ingest.py record <raw> <note1,note2> # mark a raw file as ingested
     python scripts/ingest.py hash <file>                # print content hash
+    python scripts/ingest.py ensure-entities [T1,T2]    # create missing entity hub notes
 
 The ledger lives in wiki/index.db -> `ingested` table. A raw file is considered
 "new" if its content hash isn't in the ledger, so renames and edits are handled
 correctly.
+
+`ensure-entities` creates a stub entity hub note (`wiki/notes/<ticker>.md`,
+kind: entity) for any watchlist ticker that doesn't have one yet, so the
+`[[ticker]]` links from dated event notes never dangle. Fill a stub with real
+business-model content via `/jina-capture` + `/ingest`.
 """
 from __future__ import annotations
 import sys, re, datetime, pathlib, hashlib, sqlite3
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RAW = ROOT / "wiki" / "raw"
+NOTES = ROOT / "wiki" / "notes"
 DB = ROOT / "wiki" / "index.db"
+WATCHLIST = ROOT / "watchlist.txt"
 
 
 def slugify(s: str) -> str:
@@ -81,6 +89,71 @@ def list_new() -> None:
             print(f"{r.name}  ({status})")
 
 
+def watchlist_names() -> dict[str, str]:
+    names: dict[str, str] = {}
+    if WATCHLIST.exists():
+        for line in WATCHLIST.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = [p.strip() for p in line.split(",", 1)]
+            ticker = parts[0].upper()
+            if ticker:
+                names[ticker] = parts[1] if len(parts) > 1 else ticker
+    return names
+
+
+def entity_stub(ticker: str, name: str) -> str:
+    today = datetime.date.today().isoformat()
+    return (
+        f"---\n"
+        f"id: {ticker.lower()}\n"
+        f"date: {today}\n"
+        f"source: stub\n"
+        f"tags: [entity]\n"
+        f"ticker: {ticker}\n"
+        f"kind: entity\n"
+        f"status: stub\n"
+        f"---\n\n"
+        f"# {name} ({ticker})\n\n"
+        f"> **Entity hub** — the timeless profile of this company. Currently a stub.\n"
+        f"> Fill it via `/jina-capture <company overview url>` then `/ingest`, or "
+        f"write directly.\n\n"
+        f"## Business model\n_TBD — what they make/sell, how they earn._\n\n"
+        f"## Supply chain & key relationships\n"
+        f"_TBD — suppliers, customers, partners, competitors (link other "
+        f"[[hubs]] here)._\n\n"
+        f"## Why it moves\n_TBD — the drivers that show up in the news._\n\n"
+        f"## Event timeline\n"
+        f"Dated event notes that link here show up in the backlinks panel — that "
+        f"is this company's timeline. Use `/connect {ticker} <YYYY-MM>` to surface "
+        f"relationships within a month.\n"
+    )
+
+
+def ensure_entities(arg: str) -> None:
+    names = watchlist_names()
+    if arg:
+        tickers = [t.strip().upper() for t in arg.split(",") if t.strip()]
+    else:
+        tickers = list(names.keys())
+    if not tickers:
+        sys.exit("no tickers given and watchlist.txt is empty")
+    NOTES.mkdir(parents=True, exist_ok=True)
+    created, existing = [], []
+    for t in tickers:
+        path = NOTES / f"{t.lower()}.md"
+        if path.exists():
+            existing.append(t)
+            continue
+        path.write_text(entity_stub(t, names.get(t, t)), encoding="utf-8")
+        created.append(t)
+    if created:
+        print(f"created stub hub(s): {', '.join(created)} — fill via /jina-capture + /ingest")
+    if existing:
+        print(f"already present: {', '.join(existing)}")
+
+
 def record(raw_name: str, produced: str) -> None:
     path = RAW / raw_name
     if not path.exists():
@@ -107,6 +180,8 @@ def main() -> int:
         list_new()
     elif cmd == "record":
         record(sys.argv[2], sys.argv[3])
+    elif cmd == "ensure-entities":
+        ensure_entities(sys.argv[2] if len(sys.argv) > 2 else "")
     elif cmd == "hash":
         print(content_hash(pathlib.Path(sys.argv[2])))
     else:

@@ -1,0 +1,26 @@
+# Tickers tracked by scripts/collect_alpha.py — one per line: TICKER, Name
+# Edit freely. Lines starting with # are ignored.
+# Alpha Vantage uses US-listed symbols only (e.g. Google = GOOGL = Alphabet).
+
+# --- Equities & ETF proxies (collected by `collect_alpha.py news`) ---
+MSFT, Microsoft
+GOOGL, Alphabet (Google)
+TSLA, Tesla
+PLTR, Palantir
+QQQ, Nasdaq 100 (Invesco QQQ ETF — Nasdaq proxy)
+SPY, S&P 500 (SPDR S&P 500 ETF — S&P 500 proxy)
+GLD, Gold (SPDR Gold Shares ETF — gold proxy)
+SLV, Silver (iShares Silver Trust ETF — silver proxy)
+USO, Oil (United States Oil Fund — WTI crude proxy)
+VIXY, VIX (ProShares VIX Short-Term Futures ETF — volatility proxy)
+
+# --- Macro series (collected by `collect_alpha.py series`, NOT news) ---
+# These have no news ticker; their hubs (ust10y/ust2y) are fed real values by
+# the `series` command (TREASURY_YIELD). Configured in collect_alpha.py SERIES.
+#   ust10y  -> 10-year US Treasury yield
+#   ust2y   -> 2-year US Treasury yield
+# Gold/silver/oil also get a price series there, linked to gld/slv/uso.
+
+# --- Not on Alpha Vantage (US-listed only) — capture via /jina-capture ---
+# LS Electric (KRX:010120, Korea) -> see notes/ls-electric.md; gather its news
+#   with /jina-capture; it still connects via [[wikilinks]] + semantic search.
